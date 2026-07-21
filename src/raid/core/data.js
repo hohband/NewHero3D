@@ -10,7 +10,7 @@ export const HEROES = {
   gongsunsheng:{ id: "gongsunsheng", name: "公孙胜", role: "aoe", cost: 10, lc: 25, cd: 16, hp: 240, dps: 26, range: 4, spd: 1.3, breach: 1, tag: ["AOE"], skillName: "五雷天罡" },
   yanqing:   { id: "yanqing",   name: "燕青",   role: "kiter", cost: 3, lc: 10, cd: 10, hp: 270, dps: 24, range: 4, spd: 1.9, breach: 1, tag: ["远程"], skillName: "鹞子翻身" },
   likui:     { id: "likui",     name: "李逵",   role: "berserker", cost: 6, lc: 15, cd: 15, hp: 400, dps: 32, range: 1, spd: 1.4, breach: 2, tag: ["狂暴","AOE"], skillName: "板斧旋风" },
-  huaron:    { id: "huarong",   name: "花荣",   role: "sniper", cost: 3, lc: 15, cd: 12, hp: 230, dps: 44, range: 7, spd: 1.1, breach: 1, tag: ["远程"], skillName: "百步穿杨" },
+  huarong:   { id: "huarong",   name: "花荣",   role: "sniper", cost: 3, lc: 15, cd: 12, hp: 230, dps: 44, range: 7, spd: 1.1, breach: 1, tag: ["远程"], skillName: "百步穿杨" },
   shiqian:   { id: "shiqian",   name: "时迁",   role: "stealth", cost: 3, lc: 20, cd: 20, hp: 240, dps: 22, range: 1, spd: 1.9, breach: 1, tag: ["潜行"], skillName: "神偷" },
 };
 
@@ -90,6 +90,35 @@ export const SCORING = {
 };
 export const LOOT = { starCoeff: [1.0, 1.3, 1.6], base: 100 };
 export const RELIEF = { min: 0.20, max: 0.30, unlockScale: 0.85 };
+
+// ============ 战争迷雾（v2 §4.7）============
+export const FOG = {
+  enabled: true,
+  visionMelee: 4,   // 近战视野
+  visionRanged: 5,  // 远程视野
+  visionShiqian: 6, // 时迁侦察视野
+  scoutFullMap: true, // 侦查期全图可见
+};
+
+// ============ 天气环境（v2 §4.8）============
+// 开局随机；影响全局规则，覆盖所有单位。
+export const WEATHERS = {
+  clear: { id: "clear", name: "晴", moveMult: 1.0, visionMod: 0, rangeMod: 0, fireValid: true, thunderMult: 1.0, stealthBonus: 0, footprints: false },
+  rain:  { id: "rain",  name: "雨", moveMult: 0.9, visionMod: -1, rangeMod: 0, fireValid: false, thunderMult: 1.5, stealthBonus: 0, footprints: false },
+  fog:   { id: "fog",   name: "雾", moveMult: 1.0, visionMod: -3, rangeMod: -2, fireValid: true, thunderMult: 1.0, stealthBonus: 0.10, footprints: false },
+  snow:  { id: "snow",  name: "雪", moveMult: 0.8, visionMod: 0, rangeMod: 0, fireValid: true, thunderMult: 1.0, stealthBonus: 0, footprints: true },
+};
+export const WEATHER_IDS = Object.keys(WEATHERS);
+
+// ============ 主动欺骗（v2 §4.6 诱饵）============
+export const DECOY = { hp: 60, attractRange: 5, duration: 8, liangcaoCost: 15 };
+
+// ============ 梁山号令（v2 §8.1 战前三选一）============
+export const ORDERS_META = {
+  liangcao_first: { id: "liangcao_first", name: "粮草先行", desc: "本局粮草 +50", apply: (bm) => { bm.liangcao += 50; } },
+  fire_attack:    { id: "fire_attack",    name: "火攻计",   desc: "火系效果 +50%（公孙胜雷法/火油）", apply: (bm) => { bm.fireMult = 1.5; } },
+  night_cloak:    { id: "night_cloak",    name: "夜行衣",   desc: "部署后 4s 潜行（不被索敌）", apply: (bm) => { bm.deployStealth = 4; } },
+};
 
 // ============ 技能效果参数（GDD-02）============
 export const SKILL_FX = {

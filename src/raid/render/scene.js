@@ -248,28 +248,46 @@ export class RaidScene {
   sync(dt) {
     const bm = this.bm;
     if (this._shake && this._shake.t > 0) { this._shake.t -= dt; this._updateCamera(); }
+    // 天气粒子下落
+    if (this._weatherP) {
+      const pos = this._weatherP.geometry.attributes.position;
+      const sp = this._weatherP.userData.speed;
+      for (let i = 0; i < pos.count; i++) {
+        let y = pos.getY(i) - sp * dt * 10;
+        if (y < 0) y = 12;
+        pos.setY(i, y);
+      }
+      pos.needsUpdate = true;
+    }
     // 新单位
     for (const u of bm.units) {
       if (!this.unitMeshes.has(u.uid)) this._unitMesh(u);
       const mesh = this.unitMeshes.get(u.uid);
-      mesh.visible = u.alive;
+      // 迷雾：敌方单位在迷雾外不渲染（己方始终可见）
+      const inFog = u.team === 1 && !bm.isVisible(u.x, u.y);
+      mesh.visible = u.alive && !inFog;
       if (u.alive) {
         mesh.position.x += (u.x - mesh.position.x) * Math.min(1, dt * 12);
         mesh.position.z += (u.y - mesh.position.z) * Math.min(1, dt * 12);
         // 潜行半透明
         mesh.material.opacity = u.isStealthed && u.isStealthed(bm.time) ? 0.35 : 1;
         mesh.material.transparent = true;
+        // 诱饵草人标记（棕色）
+        if (u.isDecoy && !u._decoyTinted) { mesh.material.color.setHex(0x9a7a4a); u._decoyTinted = true; }
       }
       const hb = this.hpBars.get(u.uid);
-      if (hb) { hb.spr.visible = u.alive; hb.spr.position.set(mesh.position.x, hb.y, mesh.position.z); this._updateHpBar(u.uid); }
+      if (hb) { hb.spr.visible = u.alive && !inFog; hb.spr.position.set(mesh.position.x, hb.y, mesh.position.z); this._updateHpBar(u.uid); }
     }
     // 建筑
     for (const b of bm.buildings) {
       const mesh = this.buildingMeshes.get(b.uid);
       if (!mesh) continue;
+      // 迷雾：建筑在迷雾外不渲染（核心/陷阱始终可见以维持目标感）
+      const inFogB = b.kind !== "core" && b.kind !== "trap" && !bm.isVisible(b.x, b.y);
+      mesh.visible = !inFogB;
       if (b.destroyed) { mesh.visible = b.kind === "trap" ? false : mesh.visible; mesh.scale.y = Math.max(0.08, mesh.scale.y - dt * 2); if (b.kind !== "trap") mesh.position.y = mesh.scale.y / 2 * (b.kind === "core" ? 1.6 : 0.9); }
       const hb = this.hpBars.get(b.uid);
-      if (hb) { hb.spr.visible = !b.destroyed; hb.spr.position.set(b.x, hb.y, b.y); this._updateHpBar(b.uid); }
+      if (hb) { hb.spr.visible = !b.destroyed && !inFogB; hb.spr.position.set(b.x, hb.y, b.y); this._updateHpBar(b.uid); }
       // 粮仓高亮圈脉冲 + 摧毁后隐藏
       if (b._lootRing) {
         b._lootRing.visible = !b.destroyed;
@@ -288,6 +306,39 @@ export class RaidScene {
   }
 
   render() { this.renderer.render(this.scene, this.camera); }
+
+  // 天气视觉：色调 + 粒子
+  setWeatherFx(weatherId) {
+    // 清理旧天气粒子
+    if (this._weatherP) { this.scene.remove(this._weatherP); this._weatherP = null; }
+    this.scene.fog.color.setHex(0x1a1410);
+    this.scene.fog.near = 20; this.scene.fog.far = 45;
+    if (weatherId === "rain") {
+      this.scene.fog.color.setHex(0x141820); this.scene.fog.near = 12; this.scene.fog.far = 34;
+      this._weatherP = this._makeParticles(0x6a8ac8, 300, 0.05, 0.4);
+    } else if (weatherId === "fog") {
+      this.scene.fog.color.setHex(0x2a2a2e); this.scene.fog.near = 6; this.scene.fog.far = 22;
+      this._weatherP = this._makeParticles(0xaaaaaa, 150, 0.02, 0.15);
+    } else if (weatherId === "snow") {
+      this.scene.fog.color.setHex(0x1e2026); this.scene.fog.near = 14; this.scene.fog.far = 40;
+      this._weatherP = this._makeParticles(0xffffff, 250, 0.03, 0.2);
+    }
+  }
+  _makeParticles(color, count, size, speed) {
+    const geo = new THREE.BufferGeometry();
+    const pos = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      pos[i * 3] = Math.random() * 24;
+      pos[i * 3 + 1] = Math.random() * 12;
+      pos[i * 3 + 2] = Math.random() * 16;
+    }
+    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    const mat = new THREE.PointsMaterial({ color, size, transparent: true, opacity: 0.7 });
+    const pts = new THREE.Points(geo, mat);
+    pts.userData.speed = speed;
+    this.scene.add(pts);
+    return pts;
+  }
 
   // —— 技能选点预览 ——
   showSkillPreview(kind, x, y, param) {

@@ -2,7 +2,7 @@
 // 20Hz 固定步长；逻辑瞬时结算，事件数组供表现层回放；node 可独立运行。
 import { RaidGrid } from "./grid.js";
 import { makeHero, makeEnemy, makeBoss, makeSentry, makeSummon } from "./units.js";
-import { HEROES, BUILDINGS, LEVEL, SCORING, LOOT, RELIEF, SKILL_FX } from "./data.js";
+import { HEROES, BUILDINGS, LEVEL, SCORING, LOOT, RELIEF, SKILL_FX, FOG, WEATHERS, WEATHER_IDS, DECOY, ORDERS_META } from "./data.js";
 import { keyOf, manhattan } from "../../core/coords.js";
 
 const STEP = 1 / 20; // 50ms
@@ -35,6 +35,48 @@ export class RealTimeBattleManager {
     this.flowDirty = true;
     this._acc = 0;
     this._endEmitted = false;
+    // v2 涌现：天气 / 迷雾 / 号令 / 诱饵
+    this.weather = WEATHERS.clear;
+    this.fireMult = 1.0;               // 火攻计号令
+    this.deployStealth = 0;            // 夜行衣号令
+    this.order = null;                 // 已选号令 id
+    this.visibleTiles = new Set();     // 迷雾：当前可见格
+    this.decoys = [];
+  }
+
+  // 随机天气（开局）
+  rollWeather() {
+    const idx = Math.floor((this.roll.roll() / 100) * WEATHER_IDS.length) % WEATHER_IDS.length;
+    this.weather = WEATHERS[WEATHER_IDS[idx]];
+    this.events.push({ t: "weather", weather: this.weather });
+    return this.weather;
+  }
+  setWeather(id) { this.weather = WEATHERS[id] || WEATHERS.clear; }
+
+  // 选择号令
+  chooseOrder(orderId) {
+    const o = ORDERS_META[orderId];
+    if (!o) return false;
+    this.order = orderId;
+    o.apply(this);
+    this.events.push({ t: "order_chosen", order: o });
+    return true;
+  }
+
+  // 天气修正：移速 / 视野 / 射程
+  moveMult() { return this.weather.moveMult; }
+  visionOf(u) {
+    let v = u.range > 1 ? FOG.visionRanged : FOG.visionMelee;
+    if (u.id === "shiqian") v = FOG.visionShiqian;
+    return Math.max(2, v + this.weather.visionMod);
+  }
+  rangeOf(u) { return Math.max(1, u.range + (u.team === 0 ? this.weather.rangeMod : 0)); }
+
+  // 综合潜行判定：雪天足迹暴露（潜行失效）；雾天增强（更难被发现）
+  _isHidden(u) {
+    if (!u.isStealthed(this.time)) return false;
+    if (this.weather.footprints) return false; // 雪天足迹暴露潜行
+    return true;
   }
 
   // ---------- 初始化 ----------
@@ -74,6 +116,45 @@ export class RealTimeBattleManager {
     }
     this.core = this.buildings.find(b => b.kind === "core");
     this._recomputeFlow();
+    this._updateFog();
+  }
+
+  // ---------- 战争迷雾 ----------
+  _updateFog() {
+    if (!FOG.enabled) return;
+    this.visibleTiles.clear();
+    if (this.phase === "scout" && FOG.scoutFullMap) {
+      for (let y = 0; y < this.grid.h; y++) for (let x = 0; x < this.grid.w; x++) this.visibleTiles.add(keyOf(x, y));
+      return;
+    }
+    for (const u of this.units) {
+      if (u.team !== 0 || !u.alive) continue;
+      const v = this.visionOf(u);
+      const cx = Math.round(u.x), cy = Math.round(u.y);
+      for (let dy = -v; dy <= v; dy++) for (let dx = -v; dx <= v; dx++) {
+        if (Math.abs(dx) + Math.abs(dy) > v) continue;
+        const nx = cx + dx, ny = cy + dy;
+        if (this.grid.inside(nx, ny)) this.visibleTiles.add(keyOf(nx, ny));
+      }
+    }
+  }
+  isVisible(x, y) {
+    if (!FOG.enabled) return true;
+    if (this.phase === "scout" && FOG.scoutFullMap) return true;
+    return this.visibleTiles.has(keyOf(Math.round(x), Math.round(y)));
+  }
+
+  // ---------- 主动欺骗：诱饵 ----------
+  deployDecoy(pos) {
+    if (this.phase !== "battle") return null;
+    if (this.liangcao < DECOY.liangcaoCost) { this.events.push({ t: "skill_fail", reason: "liangcao" }); return null; }
+    this.liangcao -= DECOY.liangcaoCost;
+    const d = makeEnemy("zhuangding", pos.x, pos.y);
+    d.team = 0; d.name = "草人"; d.isDecoy = true;
+    d.hp = DECOY.hp; d.maxHp = DECOY.hp; d.dps = 0; d.decoyUntil = this.time + DECOY.duration;
+    this._place(d); this.units.push(d); this.decoys.push(d);
+    this.events.push({ t: "decoy", unit: d });
+    return d;
   }
 
   _place(u) {
@@ -122,6 +203,8 @@ export class RealTimeBattleManager {
     this._place(u); this.units.push(u);
     this.deployedHeroes.set(heroId, { cost: h.cost, redeployUntil: 0, alive: true, everDeployed: true });
     this.lastDeployTime = now;
+    // 夜行衣号令：部署后短暂潜行
+    if (this.deployStealth > 0) u.stealthUntil = now + this.deployStealth;
     this.events.push({ t: "deploy", unit: u, hero: heroId });
     return u;
   }
@@ -185,12 +268,13 @@ export class RealTimeBattleManager {
         this.events.push({ t: "summon", unit: s });
       }
     } else if (id === "gongsunsheng") {
-      // AOE 雷法
+      // AOE 雷法（火攻计号令 + 雨天导电 双重放大）
       const tx = target && target.x !== undefined ? target.x : u.x;
       const ty = target && target.y !== undefined ? target.y : u.y;
+      const wMult = mult * this.fireMult * this.weather.thunderMult;
       for (const e of this.units) {
         if (e.team === 1 && e.alive && manhattan({ x: Math.round(tx), y: Math.round(ty) }, { x: Math.round(e.x), y: Math.round(e.y) }) <= SKILL_FX.aoeRadius) {
-          e.takeDamage(SKILL_FX.aoeDmg * mult, now);
+          e.takeDamage(SKILL_FX.aoeDmg * wMult, now);
         }
       }
       this.events.push({ t: "aoe", x: tx, y: ty, r: SKILL_FX.aoeRadius });
@@ -309,10 +393,14 @@ export class RealTimeBattleManager {
     if (this.flowDirty) this._recomputeFlow();
     // 超时
     if (this.elapsed >= SCORING.timeoutS && !this._endEmitted) return this._finish(false, "timeout");
+    // 迷雾更新
+    this._updateFog();
     // 单位 AI
     for (const u of this.units) {
       if (!u.alive) continue;
       if (u.kind === "sentry") { this._sentryAI(u, dt); continue; }
+      if (u.isDecoy && this.time > u.decoyUntil) { this._unplace(u); u.alive = false; continue; }
+      if (u.isDecoy) continue; // 草人不动
       if (u.summonUntil && this.time > u.summonUntil) { this._unplace(u); u.alive = false; this.summonCount--; continue; }
       if (u.patrol) this._patrolAI(u, dt);
       else this._combatAI(u, dt);
@@ -385,10 +473,21 @@ export class RealTimeBattleManager {
   }
 
   _nearestEnemyUnit(u) {
+    // 守军/塔优先攻击范围内诱饵（主动欺骗生效）
+    if (u.team === 1) {
+      let decoy = null, dd = Infinity;
+      for (const e of this.units) {
+        if (!e.alive || !e.isDecoy) continue;
+        const d = manhattan(u, e);
+        if (d <= DECOY.attractRange && d < dd) { dd = d; decoy = e; }
+      }
+      if (decoy) return decoy;
+    }
     let best = null, bd = Infinity;
     for (const e of this.units) {
       if (!e.alive || e.team === u.team || e.kind === "sentry") continue;
-      if (e.isStealthed && e.isStealthed(this.time)) continue;
+      if (e.isDecoy) continue; // 真目标跳过草人（已被上面优先处理）
+      if (this._isHidden(e)) continue;
       const d = manhattan(u, e);
       if (d < bd) { bd = d; best = e; }
     }
@@ -414,7 +513,7 @@ export class RealTimeBattleManager {
     const dx = tx - u.x, dy = ty - u.y;
     const dist = Math.hypot(dx, dy);
     if (dist < 0.05) return;
-    let sp = u.spd * dt;
+    let sp = u.spd * dt * this.moveMult(); // 天气影响移速
     if (this.time < u.slowUntil) sp *= (1 - u.slowPct);
     const nx = u.x + (dx / dist) * sp;
     const ny = u.y + (dy / dist) * sp;
@@ -455,11 +554,17 @@ export class RealTimeBattleManager {
   }
 
   _towerFire(b) {
-    // 找范围内最近梁山单位（尊重潜行/嘲讽）
+    // 优先攻击范围内诱饵（主动欺骗）
     let best = null, bd = Infinity;
     for (const u of this.units) {
-      if (u.team !== 0 || !u.alive) continue;
-      if (u.isStealthed(this.time)) continue;
+      if (!u.alive || !u.isDecoy) continue;
+      const d = manhattan(b, u);
+      if (d <= b.def.range && d < bd) { bd = d; best = u; }
+    }
+    // 找范围内最近梁山单位（尊重潜行/嘲讽）
+    if (!best) for (const u of this.units) {
+      if (u.team !== 0 || !u.alive || u.isDecoy) continue;
+      if (this._isHidden(u)) continue;
       const d = manhattan(b, u);
       if (d <= b.def.range && d < bd) { bd = d; best = u; }
     }
@@ -484,7 +589,7 @@ export class RealTimeBattleManager {
     let seen = false;
     for (const e of this.units) {
       if (e.team !== 0 || !e.alive) continue;
-      if (e.isStealthed(this.time)) continue;
+      if (this._isHidden(e)) continue;
       if (manhattan(u, e) <= u.vision) { seen = true; break; }
     }
     if (seen) {
@@ -503,7 +608,7 @@ export class RealTimeBattleManager {
     let enemy = null, ed = Infinity;
     for (const e of this.units) {
       if (e.team !== 0 || !e.alive) continue;
-      if (e.isStealthed(this.time)) continue;
+      if (this._isHidden(e)) continue;
       const d = manhattan(u, e);
       if (d <= 3 && d < ed) { ed = d; enemy = e; }
     }

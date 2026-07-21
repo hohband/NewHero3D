@@ -4,13 +4,37 @@ import { RealTimeBattleManager } from "./core/manager.js";
 import { RandomRollSource } from "../core/roll_source.js";
 import { RaidScene } from "./render/scene.js";
 import { RaidHUD } from "./ui/hud.js";
-import { LEVEL, HEROES } from "./core/data.js";
+import { LEVEL, HEROES, ORDERS_META, WEATHERS } from "./core/data.js";
 
 const canvas = document.getElementById("gl");
 const bm = new RealTimeBattleManager(new RandomRollSource((Math.random() * 1e9) | 0));
 bm.loadLevel();
 const scene = new RaidScene(canvas, bm);
 window.__bm = bm; window.__scene = scene; // 调试句柄
+
+// 开局随机天气 + 视觉
+const weather = bm.rollWeather();
+scene.setWeatherFx(weather.id);
+const WICON = { clear: "☀", rain: "🌧", fog: "🌫", snow: "❄" };
+document.getElementById("weatherBadge").textContent = `${WICON[weather.id] || "☀"} ${weather.name}`;
+
+// 渲染梁山号令三选一
+let chosenOrder = null;
+(function renderOrders() {
+  const box = document.getElementById("orderChoice");
+  Object.values(ORDERS_META).forEach((o, i) => {
+    const d = document.createElement("div");
+    d.className = "orderCard" + (i === 0 ? " selected" : "");
+    d.dataset.oid = o.id;
+    d.innerHTML = `<div class="nm">${o.name}</div><div class="ds">${o.desc}</div>`;
+    d.onclick = () => {
+      chosenOrder = o.id;
+      document.querySelectorAll(".orderCard").forEach(c => c.classList.toggle("selected", c.dataset.oid === o.id));
+    };
+    box.appendChild(d);
+  });
+  chosenOrder = Object.values(ORDERS_META)[0].id;
+})();
 
 // 状态
 let paused = false, slow = false;
@@ -32,7 +56,12 @@ function hint(msg, ms = 2200) {
 
 const hud = new RaidHUD(bm, {
   hint,
-  start() { bm.start(); hint("战斗开始！点编队栏选将 → 点绿色部署圈部署"); },
+  start() {
+    if (chosenOrder) bm.chooseOrder(chosenOrder);
+    bm.start();
+    const oname = chosenOrder ? ORDERS_META[chosenOrder].name : "";
+    hint(`战斗开始！号令【${oname}】已生效 · 点编队栏选将 → 点绿色部署圈部署`);
+  },
   deploy(heroId, pos) {
     // 吸附最近部署点：点击部署带（地图下半区）即部署到最近部署圈，符合 CoC 直觉
     const sp = LEVEL.spawnPoints[0];
@@ -73,6 +102,7 @@ const hud = new RaidHUD(bm, {
 });
 
 let pendingSkill = null;
+let decoyMode = false;
 
 function applyOrder(type, target) {
   const o = ORDERS[type];
@@ -171,6 +201,8 @@ canvas.addEventListener("mousedown", (e) => {
   if (!g) return;
   // 技能选点
   if (pendingSkill) { bm.castSkill(pendingSkill.uid, g); pendingSkill = null; scene.clearSkillPreview(); return; }
+  // 诱饵落点
+  if (decoyMode) { bm.deployDecoy(g); decoyMode = false; hint("草人已放下，守军被吸引！"); return; }
   // 集火选目标
   if (orderMode === "focus") {
     const tgt = pickAt(g, true);
@@ -239,7 +271,10 @@ window.addEventListener("keydown", (e) => {
   if (k === "g") hud.a.order("retreat");
   if (k === "h") hud.a.order("charge");
   if (k === "j") hud.a.order("hold");
+  if (k === "v") { decoyMode = true; hint("诱饵：点击战场放一个草人吸引守军"); }
 });
+// 诱饵按钮
+document.getElementById("decoyBtn").onclick = () => { if (bm.phase === "battle") { decoyMode = true; hint("诱饵：点击战场放一个草人吸引守军"); } };
 
 // 事件 → 特效（高光时刻 Juiciness）
 let slowmoT = 0; // 慢动作剩余
@@ -262,6 +297,9 @@ function consumeEvents() {
     else if (ev.t === "patrol_alarm") hint("巡逻队发现你，报警了！", 1800);
     else if (ev.t === "boss_down") { hint("祝龙被击败！核心护盾消失——摧毁忠义堂！", 2600); scene.bossDownFx(ev.unit.x, ev.unit.y); slowmoT = 0.9; }
     else if (ev.t === "loot") hint(`劫掠粮仓 +${ev.amount}`, 1500);
+    else if (ev.t === "weather") { const W = { clear: "☀", rain: "🌧", fog: "🌫", snow: "❄" }; hint(`天气：${W[ev.weather.id] || "☀"} ${ev.weather.name}`, 2500); }
+    else if (ev.t === "order_chosen") hint(`号令【${ev.order.name}】生效`, 2000);
+    else if (ev.t === "decoy") scene.hitFx(ev.unit.x, ev.unit.y, 0x9a7a4a);
     else if (ev.t === "battle_end") {
       if (ev.result.win) { scene.flash(); slowmoT = 1.4; }
       setTimeout(() => hud.showEnd(ev.result), ev.result.win ? 900 : 100);

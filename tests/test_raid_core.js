@@ -181,3 +181,79 @@ test("吴用召唤受独立 summon_cap 限制", () => {
   bm.castSkill(u.uid, {});
   assert.ok(bm.summonCount > 0 && bm.summonCount <= LEVEL.summonCap);
 });
+
+// ============ 迭代5：迷雾 / 天气 / 诱饵 / 号令 ============
+
+test("战争迷雾：侦查期全图可见，战斗期仅视野内可见", () => {
+  const bm = newBattle();
+  // 侦查期全图
+  assert.ok(bm.isVisible(20, 14), "侦查期全图可见");
+  bm.start();
+  const spawn = LEVEL.spawnPoints[0];
+  bm.deploy("luzhishen", spawn);
+  bm._step(0.05);
+  assert.ok(bm.isVisible(spawn.x, spawn.y), "己方可视");
+  assert.ok(!bm.isVisible(bm.core.x, bm.core.y), "迷雾外核心不可见");
+});
+
+test("天气：雪天减速 + 足迹暴露潜行", () => {
+  const bm = newBattle();
+  bm.setWeather("snow");
+  assert.equal(bm.moveMult(), 0.8, "雪天减速");
+  bm.start();
+  const spawn = LEVEL.spawnPoints[0];
+  const u = bm.deploy("shiqian", spawn);
+  u.stealthUntil = bm.time + 10;
+  assert.equal(bm._isHidden(u), false, "雪天足迹暴露潜行");
+});
+
+test("天气：雾天远程射程 -2", () => {
+  const bm = newBattle();
+  bm.setWeather("fog");
+  bm.start();
+  const spawn = LEVEL.spawnPoints[0];
+  const u = bm.deploy("huarong", spawn);
+  assert.equal(bm.rangeOf(u), 5, "雾天花荣射程 7→5");
+});
+
+test("天气：雨天公孙胜雷法 ×1.5", () => {
+  const bm = newBattle();
+  bm.setWeather("rain");
+  assert.equal(bm.weather.thunderMult, 1.5, "雨天雷法放大");
+});
+
+test("主动欺骗：诱饵吸引塔火", () => {
+  const bm = newBattle();
+  bm.start();
+  const tower = bm.buildings.find(b => b.kind === "tower");
+  const lc0 = bm.liangcao;
+  const d = bm.deployDecoy({ x: tower.x, y: tower.y - 2 });
+  assert.ok(d, "部署诱饵成功");
+  assert.equal(bm.liangcao, lc0 - 15, "诱饵耗粮草");
+  // 塔索敌应优先诱饵
+  const tgt = bm._nearestEnemyUnit({ ...tower, team: 1, x: tower.x, y: tower.y });
+  assert.ok(tgt && tgt.isDecoy, "守军/塔优先攻击诱饵");
+});
+
+test("梁山号令：粮草先行 +50", () => {
+  const bm = newBattle();
+  const lc0 = bm.liangcao;
+  bm.chooseOrder("liangcao_first");
+  assert.equal(bm.liangcao, lc0 + 50);
+  assert.equal(bm.order, "liangcao_first");
+});
+
+test("梁山号令：夜行衣部署短暂潜行", () => {
+  const bm = newBattle();
+  bm.chooseOrder("night_cloak");
+  bm.start();
+  const spawn = LEVEL.spawnPoints[0];
+  const u = bm.deploy("linchong", spawn);
+  assert.ok(u.stealthUntil > bm.time, "夜行衣部署潜行");
+});
+
+test("火攻计号令放大公孙胜雷法", () => {
+  const bm = newBattle();
+  bm.chooseOrder("fire_attack");
+  assert.equal(bm.fireMult, 1.5);
+});

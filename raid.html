@@ -61,6 +61,12 @@
   #scoutMask .count { font-size: 48px; font-weight: bold; color: #ffd27a; }
   .bigbtn { padding: 12px 32px; font-size: 18px; background: #a33; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
   .bigbtn:hover { background: #c44; }
+  .orderCard { width: 130px; padding: 14px 10px; background: rgba(40,32,24,.95); border: 2px solid #6b543a; border-radius: 10px;
+    color: #f0e6d2; cursor: pointer; text-align: center; transition: all .15s; }
+  .orderCard:hover { border-color: #ffd27a; transform: translateY(-3px); }
+  .orderCard.selected { border-color: #ffd27a; background: rgba(90,70,35,.95); box-shadow: 0 0 14px rgba(255,210,122,.4); }
+  .orderCard .nm { font-size: 16px; font-weight: bold; color: #ffd27a; margin-bottom: 6px; }
+  .orderCard .ds { font-size: 12px; color: #cbb; line-height: 1.5; }
 
   /* 结算 */
   #endPanel { position: absolute; inset: 0; background: rgba(0,0,0,.7); display: none; align-items: center; justify-content: center; }
@@ -89,6 +95,7 @@
       <span class="res">在场 <b id="liveN">0</b>/12</span>
       <span class="res">核心 <b id="coreHp">—</b></span>
       <span class="res">⏱ <b id="timer">0:00</b></span>
+      <span class="res" id="weatherBadge">☀ 晴</span>
       <span id="alertBadge">警报 Lv.0</span>
     </div>
     <div id="hint" class="hidden"></div>
@@ -97,6 +104,7 @@
       <button class="orderbtn" data-order="retreat"><span class="k">G</span>后撤</button>
       <button class="orderbtn" data-order="charge"><span class="k">H</span>冲锋</button>
       <button class="orderbtn" data-order="hold"><span class="k">J</span>坚守</button>
+      <button class="orderbtn" id="decoyBtn"><span class="k">V</span>诱饵</button>
       <button class="orderbtn" id="pauseBtn"><span class="k">Space</span>暂停</button>
       <button class="orderbtn" id="slowBtn"><span class="k">Shift</span>0.5x</button>
     </div>
@@ -104,13 +112,14 @@
     <div id="skillbar"></div>
     <div id="scoutMask">
       <h2>劫寨 · 祝家庄</h2>
-      <div style="font-size:15px;color:#cbb">侦查期 — 观察布局，点击"开战"部署梁山好汉</div>
+      <div style="font-size:15px;color:#cbb">选择一个梁山号令，然后开战</div>
+      <div id="orderChoice" style="display:flex;gap:12px;margin:8px 0;"></div>
       <div class="count" id="scoutCount">8</div>
       <button class="bigbtn" id="startBtn">开 战</button>
-      <div style="font-size:12px;color:#998;max-width:420px;text-align:center;line-height:1.7">
-        操作：点击编队栏选将 → 点战场部署 · 选中单位按 <span class="tag">Q</span>放技能 /
-        <span class="tag">X</span>撤兵 · <span class="tag">F/G/H/J</span>战术指令 ·
-        <span class="tag">Space</span>暂停 <span class="tag">Shift</span>慢放 · 右键旋转 / 滚轮缩放
+      <div style="font-size:12px;color:#998;max-width:460px;text-align:center;line-height:1.7">
+        操作：编队栏选将 → 点部署圈 · <span class="tag">Q</span>技能 /<span class="tag">X</span>撤兵 ·
+        <span class="tag">F/G/H/J</span>指令 · <span class="tag">V</span>诱饵 ·
+        <span class="tag">Space</span>暂停 <span class="tag">Shift</span>慢放 · 右键旋转/滚轮缩放
       </div>
     </div>
     <div id="endPanel">
