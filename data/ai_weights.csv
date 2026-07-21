@@ -1,0 +1,8 @@
+class,damage_expect,kill_bonus,target_value,danger,aura_coverage,position
+vanguard,0.6,0.5,0.4,0.5,1.0,1.5
+infantry,1.0,1.0,1.0,1.0,0.5,1.2
+cavalry,1.1,1.3,1.2,0.8,0.5,1.0
+archer,1.0,1.1,1.2,1.5,0.5,1.5
+strategist,0.9,0.8,1.0,1.8,1.2,1.0
+healer,0.2,0.1,0.2,2.0,1.0,0.8
+support,0.4,0.5,0.6,1.5,2.0,1.0

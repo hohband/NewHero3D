@@ -1,0 +1,11 @@
+# macOS
+.DS_Store
+
+# IDE / Workbuddy
+.workbuddy/
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/

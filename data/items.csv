@@ -1,0 +1,6 @@
+﻿item_id,name,range_shape,range_min,range_max,target,uses_per_battle,effects,desc
+jinchuangyao,金疮药,adjacent,0,1,ally,3,heal(1.2),为自己或相邻友军敷药止血，恢复生命（谋略×1.2）
+xingjunjiu,行军酒,self,0,0,self,2,rage(+30),痛饮壮行，怒气+30
+jiedusan,解毒散,adjacent,0,1,ally,2,dispel(2),为自己或相邻友军驱散2个减益
+huxinjing,护心镜,self,0,0,self,2,"def_up(0.4,2)",防御+40%，持续2回合
+feihuangshi,飞蝗石,diamond,2,4,enemy,3,phys_dmg(0.6),投掷打击2-4格内的敌人（攻击×0.6）

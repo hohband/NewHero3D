@@ -1,0 +1,9 @@
+unit_id,name,nickname,star,quality,class,hp,atk,def,mgc,spd,crit,dodge,block,move,range_min,range_max,weapon,skill_signature,bonds,unlock,traits
+yang_zhi_boss,杨志,青面兽,天暗星,purple,cavalry,1400,190,110,60,85,10,5,8,6,1,2,杨家枪,act_yangjia,,BOSS,alert
+lao_duguan,老都管,,,green,support,400,60,50,70,60,5,5,0,4,1,1,拐杖,act_guli,,NPC,
+xiangjun_spear,厢军枪兵,,,green,infantry,520,105,60,20,70,8,3,5,4,1,2,长枪,,,杂兵,
+xiangjun_shield,厢军刀牌手,,,green,vanguard,620,95,85,20,65,5,3,25,4,1,1,刀牌,,,杂兵,
+chao_gai_npc,晁盖,托塔天王,天魁星,purple,infantry,900,120,85,50,78,10,5,10,5,1,1,朴刀,,,NPC,
+liu_tang_npc,刘唐,赤发鬼,地异星,blue,infantry,780,110,70,40,80,12,8,5,5,1,1,朴刀,,,NPC,
+xiangjun_recruit,厢军新兵,,,green,infantry,400,80,45,15,60,5,3,0,4,1,1,长枪,,,杂兵,
+pai_recruit,刀牌新兵,,,green,vanguard,500,75,65,15,55,5,3,15,4,1,1,刀牌,,,杂兵,

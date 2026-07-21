@@ -1,0 +1,16 @@
+key,value,desc
+level_exp_base,100,升级所需经验 = base × 当前等级
+level_stat_growth,0.02,每级全属性 +2%（与基础值相乘）
+star_stat_mult,0.1,每星全属性 +10%（叠乘在等级成长上）
+star_max,5,星级上限
+star_shard_cost,10,升星消耗碎片 = cost × 目标星级
+breakthrough_stat_step,0.08,品质突破每档全属性 +8%（对齐数值基调：绿-8%/紫+8%/橙+15%）
+skill_level_max,5,技能等级上限
+skill_level_mult,0.05,技能效果每级 +5%（伤害/治疗倍率）
+skill_book_cost,1,技能升级消耗技能书 = cost × 目标等级
+weapon_enhance_max,10,武器强化等级上限
+weapon_enhance_atk,0.03,武器强化每级攻击 +3%
+weapon_enhance_gold,100,武器强化消耗金币 = cost × 目标等级
+weapon_refine_max,5,武器精炼阶数上限
+weapon_refine_atk,0.05,武器精炼每阶攻击 +5%
+bond_stat_bonus,5,羁绊激活：双方攻防 +5%（百分比乘区，同 Buff 口径）

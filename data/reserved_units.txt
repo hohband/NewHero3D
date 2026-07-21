@@ -1,0 +1,20 @@
+# 已登记但未实装的武将（预留名），供羁绊校验使用（数据表说明第五节）。
+# 一行一个 unit_id；# 开头为注释。实装后从本文件移除、加入 units.csv。
+# —— 第二批候选（策划文档 5.6，16名） ——
+guan_sheng
+hu_yanzhuo
+yang_zhi
+suo_chao
+shi_jin
+ruan_xiaoer
+ruan_xiaowu
+ruan_xiaoqi
+gu_dasao
+sun_li
+xie_zhen
+xie_bao
+# —— 其他预留 ——
+song_jiang
+zhang_qing2
+pang_wanchun
+lu_junyi

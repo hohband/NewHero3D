@@ -1,0 +1,107 @@
+// 劫寨 Demo 数据定义（L1 祝家庄）—— 唯一数据源，数值来自 combat-mode-design v2 / GDD
+// 纯数据，无逻辑依赖；坐标用 {x,y}，格子键用 "x,y"。
+
+// ============ 武将（8 名，GDD-02 §3.1）============
+// cost=兵符, lc=粮草消耗, cd=冷却(秒), hp/dps/range(格)/spd(格每秒), breach=破墙系数, tag=标签
+export const HEROES = {
+  luzhishen: { id: "luzhishen", name: "鲁智深", role: "tank", cost: 6, lc: 10, cd: 18, hp: 460, dps: 16, range: 1, spd: 1.2, breach: 1, tag: ["肉盾"], skillName: "罗汉金身" },
+  linchong:  { id: "linchong",  name: "林冲",   role: "dive", cost: 6, lc: 15, cd: 14, hp: 320, dps: 34, range: 1, spd: 1.6, breach: 1, tag: ["突进"], skillName: "风雪山神庙" },
+  wuyong:    { id: "wuyong",    name: "吴用",   role: "buffer", cost: 6, lc: 30, cd: 22, hp: 260, dps: 14, range: 4, spd: 1.3, breach: 1, tag: ["增益","召唤"], skillName: "七星聚义" },
+  gongsunsheng:{ id: "gongsunsheng", name: "公孙胜", role: "aoe", cost: 10, lc: 25, cd: 16, hp: 240, dps: 26, range: 4, spd: 1.3, breach: 1, tag: ["AOE"], skillName: "五雷天罡" },
+  yanqing:   { id: "yanqing",   name: "燕青",   role: "kiter", cost: 3, lc: 10, cd: 10, hp: 270, dps: 24, range: 4, spd: 1.9, breach: 1, tag: ["远程"], skillName: "鹞子翻身" },
+  likui:     { id: "likui",     name: "李逵",   role: "berserker", cost: 6, lc: 15, cd: 15, hp: 400, dps: 32, range: 1, spd: 1.4, breach: 2, tag: ["狂暴","AOE"], skillName: "板斧旋风" },
+  huaron:    { id: "huarong",   name: "花荣",   role: "sniper", cost: 3, lc: 15, cd: 12, hp: 230, dps: 44, range: 7, spd: 1.1, breach: 1, tag: ["远程"], skillName: "百步穿杨" },
+  shiqian:   { id: "shiqian",   name: "时迁",   role: "stealth", cost: 3, lc: 20, cd: 20, hp: 240, dps: 22, range: 1, spd: 1.9, breach: 1, tag: ["潜行"], skillName: "神偷" },
+};
+
+// ============ 防御建筑（GDD-03 §③）============
+export const BUILDINGS = {
+  outer_wall: { id: "outer_wall", name: "外墙", hp: 70, dps: 0, range: 0, kind: "wall", star2: true },
+  inner_wall: { id: "inner_wall", name: "内墙", hp: 130, dps: 0, range: 0, kind: "wall", star2: true },
+  arrow_tower: { id: "arrow_tower", name: "箭塔", hp: 70, dps: 9, range: 5, kind: "tower", star2: true },
+  watchtower: { id: "watchtower", name: "瞭望塔", hp: 60, dps: 6, range: 7, kind: "tower", star2: true, slow: 0.3 },
+  granary: { id: "granary", name: "粮仓", hp: 90, dps: 0, range: 0, kind: "resource", star2: true, loot: 60 },
+  core: { id: "core", name: "忠义堂", hp: 380, dps: 0, range: 0, kind: "core", star2: true },
+  trap_pit: { id: "trap_pit", name: "陷坑", hp: 1, dps: 40, range: 0, kind: "trap", star2: false },
+};
+
+// ============ 敌方单位 ============
+export const ENEMIES = {
+  zhuangding: { id: "zhuangding", name: "庄丁", hp: 90, dps: 7, range: 1, spd: 1.4, tag: ["守军"] },
+  spearman:   { id: "spearman",   name: "枪兵", hp: 140, dps: 9, range: 1, spd: 1.0, tag: ["反突进"] },
+  sentry:     { id: "sentry",     name: "哨兵", hp: 20, dps: 0, range: 0, spd: 0, tag: ["哨兵"], vision: 5 },
+  boss_zhulong: { id: "boss_zhulong", name: "祝龙", hp: 460, dps: 13, range: 1, spd: 1.3, tag: ["boss","守将"] },
+};
+
+// ============ 关卡 L1 布局 ============
+// 地图 24 x 16。y=0 底（玩家部署带），y 增大向上（敌方核心在顶部）。
+export const LEVEL = {
+  id: "L1",
+  name: "祝家庄",
+  w: 24, h: 16,
+  bingfu: 30, liangcao: 150,
+  scoutTime: 8, timeout: 240,
+  deployInterval: 1.5, redeployCd: 20, liveCap: 12, summonCap: 4,
+  spawnPoints: [{ x: 11, y: 1 }],           // 梁山泊大营（底部安全区）
+  // 建筑摆放 {type, x, y}
+  buildings: [
+    // 外墙圈（y=6 一线，留门 x=11）
+    ...wallRow("outer_wall", 4, 18, 6, [11, 12]),
+    // 内墙圈（y=10 一线，留门 x=11）
+    ...wallRow("inner_wall", 7, 16, 10, [11, 12]),
+    { type: "arrow_tower", x: 7, y: 7 },
+    { type: "arrow_tower", x: 16, y: 7 },
+    { type: "watchtower", x: 11, y: 12 },
+    { type: "granary", x: 5, y: 8 },
+    { type: "granary", x: 18, y: 8 },
+    { type: "trap_pit", x: 11, y: 8 },
+    { type: "trap_pit", x: 12, y: 8 },
+    { type: "core", x: 11, y: 13 },
+  ],
+  // 初始守军 {type, x, y}
+  defenders: [
+    { type: "sentry", x: 11, y: 6 },        // 外门口哨兵
+    { type: "zhuangding", x: 8, y: 11 },
+    { type: "zhuangding", x: 14, y: 11 },
+    { type: "spearman", x: 11, y: 11 },
+    { type: "boss_zhulong", x: 11, y: 12 }, // Boss 守核心前
+  ],
+  // 巡逻队（v2 动态防御）：沿路线循环
+  patrols: [
+    { id: "p1", type: "zhuangding", route: [{ x: 5, y: 9 }, { x: 17, y: 9 }], size: 2 },
+  ],
+};
+
+function wallRow(type, x0, x1, y, gaps = []) {
+  const out = [];
+  for (let x = x0; x <= x1; x++) {
+    if (gaps.includes(x)) continue;
+    out.push({ type, x, y });
+  }
+  return out;
+}
+
+// ============ 评分 / 经济（GDD-04）============
+export const SCORING = {
+  star2Pct: 0.5,
+  star3TroopPct: 0.3,
+  star3TimeS: 120,
+  timeoutS: 240,
+};
+export const LOOT = { starCoeff: [1.0, 1.3, 1.6], base: 100 };
+export const RELIEF = { min: 0.20, max: 0.30, unlockScale: 0.85 };
+
+// ============ 技能效果参数（GDD-02）============
+export const SKILL_FX = {
+  tauntDur: 4, tauntReduce: 0.25,        // 鲁智深嘲讽/减伤
+  diveArmorShred: 0.40, diveRange: 4,    // 林冲突进
+  summonCount: 2, summonDur: 12, summonHp: 60, // 吴用援军
+  aoeRadius: 2, aoeDmg: 60,              // 公孙胜雷法
+  dodgeDur: 2,                           // 燕青位移
+  whirlBreach: 2, whirlRadius: 1, whirlDmg: 40, // 李逵旋风
+  snipeMult: 2.5,                        // 花荣狙杀
+  stealthDur: 5,                         // 时迁潜行
+  rageMax: 100, rageOnHit: 8, rageOnKill: 30,  // 怒气
+  alertSentryDelay: 2,                   // 哨兵点火延迟
+  commanderCd: 15,                       // 指挥官决策周期
+};

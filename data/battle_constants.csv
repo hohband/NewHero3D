@@ -1,0 +1,55 @@
+key,value,desc
+rage_on_hit_taken,10,受击回怒（决策日志 D7 占位）
+rage_on_kill,30,击杀回怒（策划文档 6.5）
+rage_on_wait,15,待机回怒（策划文档 6.5 行动表）
+rage_on_skill,10,施放技能回怒（策划文档 6.5；与效果串自带的 rage() 不重复）
+ai_kill_base,50,AI 击杀基准分（表13）
+ai_focus_bonus,100,AI 集火目标加分（8.5）
+ai_danger_base,-30,AI 危险度基准分（表13：预估承伤÷自身HP×基准）
+ai_close_bonus,2,AI 待机评分向敌接近每格加分（占位 D26）
+ai_aura_coverage_factor,10,AI 光环覆盖每队友加分系数（D26 代理）
+ai_wait_base,5,AI 待机基准分
+ai_target_value_default,15,AI 目标价值：support/未列明职业占位（D26）
+ai_target_value_healer,30,AI 目标价值：医者（表13）
+ai_target_value_strategist,25,AI 目标价值：谋士（表13）
+ai_target_value_dps,20,AI 目标价值：神射/步军/马军（表13）
+ai_target_value_vanguard,10,AI 目标价值：先锋（表13）
+ai_target_value_low_hp,20,AI 目标价值：残血加成上限（表13）
+ai_target_value_full_rage,15,AI 目标价值：满怒高威胁次要加分（D26）
+ai_target_value_bond_core,15,AI 目标价值：羁绊核心标记加分（D26 改判，接羁绊系统）
+ai_pos_backstab,20,AI 站位奖励：背刺（表13）
+ai_pos_side,10,AI 站位奖励：侧击（表13）
+ai_pos_highground,15,AI 站位奖励：高地（表13）
+ai_heal_expect_factor,1.2,AI 有效恢复期望系数（表15）
+ai_heal_urgent_threshold,0.35,AI 濒危血量比例阈值（表15）
+ai_heal_urgent_bonus,60,AI 濒危队友加分（表15）
+ai_heal_overheal_factor,0.3,AI 治疗溢出扣分系数（表13）
+ai_buff_target_base,20,AI 增益/控制技能每覆盖 1 人加分（占位 D26）
+ai_support_buff_core,25,AI 辅助增益命中羁绊核心输出每人加分（表15；医者无治疗需求时退化同口径，D26）
+ai_vanguard_cover,10,AI 先锋掩护每队友加分（表15）
+ai_vanguard_cover_line,25,AI 先锋落点在敌我连线格掩护加分（表15）
+ai_infantry_backstab,20,AI 步军背刺位加分（表15）
+ai_cavalry_charge_per_cell,3,AI 马军冲锋每格加分（表15）
+ai_cavalry_refresh_kill,30,AI 马军预计击杀刷新加分（表15）
+ai_archer_safe_dist,3,AI 神射安全距离（格）（表15）
+ai_archer_danger_penalty,-40,AI 神射安全距离内有敌人扣分（表15）
+ai_archer_highground,20,AI 神射高地加分（表15）
+ai_strategist_aoe_per_extra,15,AI 谋士 AOE 每多覆盖 1 敌加分（表15）
+ai_strategist_control_high_value,40,AI 谋士控制技能命中高价值目标每人加分（表15）
+ai_obj_danger_factor,0.5,AI 关卡目标行为危险度折算系数（D38）
+ai_collect_interact,120,AI 夺取：相邻物件夺取基准分（D38）
+ai_collect_approach_base,100,AI 夺取：接近物件基准分（D38）
+ai_collect_approach_cell_cost,2,AI 夺取：每格距离扣分（D38）
+ai_escort_base,250,AI 护送：趋向目标区基准分（D38）
+ai_escort_cell_cost,3,AI 护送：每格距离扣分（D38）
+ai_wine_stall_arrive,150,AI 蒙汗药酒：到达酒摊基准分（D38）
+ai_wine_stall_approach_base,140,AI 蒙汗药酒：接近酒摊基准分（D38）
+ai_wine_stall_cell_cost,2,AI 蒙汗药酒：每格距离扣分（D38）
+ai_obstacle_attack_base,3,AI 攻击可破坏障碍（拒马）基准分：无普攻候选时的低优先级备选（6.3）
+ai_ult_vanguard_hp,0.4,半自动绝技：先锋自身血量比例阈值（表16）
+ai_ult_vanguard_near,3,半自动绝技：先锋近身敌人数阈值（表16）
+ai_ult_dps_min_targets,2,半自动绝技：步军/马军一次命中数阈值（表16）
+ai_ult_strategist_min_targets,3,半自动绝技：谋士一次命中数阈值（表16）
+ai_ult_healer_urgent_hp,0.35,半自动绝技：医者濒危队友血量阈值（表16）
+ai_ult_healer_avg_hp,0.6,半自动绝技：医者队友平均血量阈值（表16）
+ai_ult_support_min_targets,4,半自动绝技：辅助覆盖人数阈值（表16）
