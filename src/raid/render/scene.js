@@ -2,8 +2,14 @@
 // 表现层：只读逻辑状态，不写逻辑。颜色块+头顶血条，后续可换模型。
 import * as THREE from "three";
 import { HEROES, BUILDINGS, LEVEL } from "../core/data.js";
+import { buildHero, buildEnemy, buildBuilding } from "./models.js";
 
 const TILE = 1;
+
+// 遍历 Group/ Mesh 上所有材质（Group 模型兼容处理）
+function forEachMat(obj, fn) {
+  obj.traverse((o) => { if (o.material) { if (Array.isArray(o.material)) o.material.forEach(fn); else fn(o.material); } });
+}
 
 export class RaidScene {
   constructor(canvas, bm) {
@@ -110,20 +116,12 @@ export class RaidScene {
 
   _buildings() {
     for (const b of this.bm.buildings) {
-      let mesh;
-      if (b.kind === "trap") {
-        mesh = new THREE.Mesh(new THREE.CircleGeometry(0.4, 6), new THREE.MeshBasicMaterial({ color: 0x994444 }));
-        mesh.rotation.x = -Math.PI / 2; mesh.position.set(b.x, 0.03, b.y);
-      } else {
-        const hgt = b.kind === "core" ? 1.6 : b.kind === "tower" ? 1.5 : 0.9;
-        const size = b.kind === "core" ? 1.6 : 0.92;
-        mesh = new THREE.Mesh(new THREE.BoxGeometry(size, hgt, size), new THREE.MeshLambertMaterial({ color: this._buildingColor(b) }));
-        mesh.position.set(b.x, hgt / 2, b.y);
-      }
+      const mesh = buildBuilding(b);
+      mesh.position.set(b.x, 0, b.y);
       mesh.userData.building = b;
       this.scene.add(mesh);
       this.buildingMeshes.set(b.uid, mesh);
-      if (b.kind !== "trap") this._addHpBar(b.uid, b, 1.2);
+      if (b.kind !== "trap") this._addHpBar(b.uid, b, b.kind === "core" ? 2.0 : b.kind === "tower" ? 2.0 : 1.3);
       // 粮仓加脉冲高亮圈（引导劫掠）
       if (b.kind === "resource") {
         const ring = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.05, 24), new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.5, side: THREE.DoubleSide }));
@@ -134,29 +132,18 @@ export class RaidScene {
     }
   }
 
-  _heroColor(id) {
-    const map = { luzhishen: 0x4a9a4a, linchong: 0x4a7ac8, wuyong: 0xb8b04a, gongsunsheng: 0x9a5ac8, yanqing: 0x4ac8b8, likui: 0xc84a4a, huarong: 0xc89a4a, shiqian: 0x888888 };
-    return map[id] || 0x4a9ac8;
-  }
-
   _unitMesh(u) {
-    let color, size = 0.6, hgt = 0.9;
-    if (u.kind === "hero") { color = this._heroColor(u.id); size = 0.62; hgt = 1.0; }
-    else if (u.isBoss) { color = 0xd03030; size = 1.0; hgt = 1.5; }
-    else if (u.kind === "sentry") { color = 0xd8b84a; size = 0.5; hgt = 0.8; }
-    else if (u.kind === "summon") { color = 0x8ab84a; size = 0.5; hgt = 0.7; }
-    else color = u.def && u.def.id === "spearman" ? 0x7a5a9a : 0x9a5a4a; // 守军
-    const mesh = new THREE.Mesh(new THREE.CylinderGeometry(size / 2, size / 2, hgt, 10), new THREE.MeshLambertMaterial({ color }));
-    mesh.position.set(u.x, hgt / 2, u.y);
+    let mesh, barY = 1.5;
+    if (u.kind === "hero") { mesh = buildHero(u.id); barY = 1.6; }
+    else if (u.isBoss) { mesh = buildEnemy(u.def.id, "boss"); barY = 2.1; }
+    else if (u.kind === "sentry") { mesh = buildEnemy(null, "sentry"); barY = 1.6; }
+    else { mesh = buildEnemy(u.def ? u.def.id : null, u.kind); barY = 1.2; }
+    // 援军/草人绿色基座区分
+    mesh.position.set(u.x, 0, u.y);
     mesh.userData.unit = u;
-    // Boss 加冠
-    if (u.isBoss) {
-      const crown = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.4, 6), new THREE.MeshLambertMaterial({ color: 0xffd27a }));
-      crown.position.y = hgt / 2 + 0.25; mesh.add(crown);
-    }
     this.scene.add(mesh);
     this.unitMeshes.set(u.uid, mesh);
-    this._addHpBar(u.uid, u, hgt + 0.4);
+    this._addHpBar(u.uid, u, barY);
     return mesh;
   }
 
@@ -269,11 +256,14 @@ export class RaidScene {
       if (u.alive) {
         mesh.position.x += (u.x - mesh.position.x) * Math.min(1, dt * 12);
         mesh.position.z += (u.y - mesh.position.z) * Math.min(1, dt * 12);
-        // 潜行半透明
-        mesh.material.opacity = u.isStealthed && u.isStealthed(bm.time) ? 0.35 : 1;
-        mesh.material.transparent = true;
-        // 诱饵草人标记（棕色）
-        if (u.isDecoy && !u._decoyTinted) { mesh.material.color.setHex(0x9a7a4a); u._decoyTinted = true; }
+        // 潜行半透明（Group 兼容：遍历所有材质）
+        const hidden = u.isStealthed && u.isStealthed(bm.time);
+        if (hidden !== mesh._hiddenState) {
+          mesh._hiddenState = hidden;
+          forEachMat(mesh, (m) => { m.transparent = true; m.opacity = hidden ? 0.35 : 1; });
+        }
+        // 诱饵草人标记（棕色染全身）
+        if (u.isDecoy && !u._decoyTinted) { forEachMat(mesh, (m) => m.color.setHex(0x9a7a4a)); u._decoyTinted = true; }
       }
       const hb = this.hpBars.get(u.uid);
       if (hb) { hb.spr.visible = u.alive && !inFog; hb.spr.position.set(mesh.position.x, hb.y, mesh.position.z); this._updateHpBar(u.uid); }
@@ -285,7 +275,7 @@ export class RaidScene {
       // 迷雾：建筑在迷雾外不渲染（核心/陷阱始终可见以维持目标感）
       const inFogB = b.kind !== "core" && b.kind !== "trap" && !bm.isVisible(b.x, b.y);
       mesh.visible = !inFogB;
-      if (b.destroyed) { mesh.visible = b.kind === "trap" ? false : mesh.visible; mesh.scale.y = Math.max(0.08, mesh.scale.y - dt * 2); if (b.kind !== "trap") mesh.position.y = mesh.scale.y / 2 * (b.kind === "core" ? 1.6 : 0.9); }
+      if (b.destroyed) { mesh.visible = b.kind === "trap" ? false : mesh.visible; mesh.scale.y = Math.max(0.08, mesh.scale.y - dt * 2); }
       const hb = this.hpBars.get(b.uid);
       if (hb) { hb.spr.visible = !b.destroyed && !inFogB; hb.spr.position.set(b.x, hb.y, b.y); this._updateHpBar(b.uid); }
       // 粮仓高亮圈脉冲 + 摧毁后隐藏
