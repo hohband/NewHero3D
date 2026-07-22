@@ -38,6 +38,8 @@ export class RaidScene {
     this.hpBars = new Map();
     this.groundTiles = [];
     this.effects = [];             // 临时特效
+    this.floaters = [];            // 减血飞字
+    this.projectiles = [];         // 飞行弹道
 
     this._buildGround();
     this._buildings();
@@ -178,6 +180,56 @@ export class RaidScene {
     this.scene.add(m);
     this.effects.push({ m, life: 0.25, vy: 3 });
   }
+
+  // ============ 战斗打击特效 ============
+  // 减血飞字：text 飘上并淡出
+  damageFloat(x, y, text, color = "#ffe08a", scale = 1) {
+    if (this.floaters.length > 40) { const f = this.floaters.shift(); this.scene.remove(f.spr); f.tex.dispose(); }
+    const cvs = document.createElement("canvas");
+    cvs.width = 128; cvs.height = 64;
+    const ctx = cvs.getContext("2d");
+    const fontSize = Math.round(38 * scale);
+    ctx.font = `bold ${fontSize}px 'Arial Black', Arial, sans-serif`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.lineWidth = 7; ctx.strokeStyle = "rgba(0,0,0,0.85)";
+    ctx.strokeText(text, 64, 32);
+    ctx.fillStyle = color;
+    ctx.fillText(text, 64, 32);
+    const tex = new THREE.CanvasTexture(cvs);
+    const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
+    spr.scale.set(1.15 * scale, 0.58 * scale, 1);
+    // 轻微水平随机偏移避免重叠
+    spr.position.set(x + (Math.random() * 0.5 - 0.25), 1.5, y + (Math.random() * 0.5 - 0.25));
+    this.scene.add(spr);
+    this.floaters.push({ spr, life: 0.95, maxLife: 0.95, vy: 1.9, tex });
+  }
+
+  // 近战打击：挥砍亮弧 + 碎点
+  meleeFx(x, y, color = 0xfff2c8) {
+    const arc = new THREE.Mesh(
+      new THREE.TorusGeometry(0.5, 0.13, 6, 12, Math.PI * 0.85),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.95, side: THREE.DoubleSide })
+    );
+    arc.rotation.x = -Math.PI / 2;
+    arc.rotation.z = Math.random() * Math.PI * 2;
+    arc.position.set(x, 0.55, y);
+    this.scene.add(arc);
+    this.effects.push({ m: arc, life: 0.16, grow: 1 });
+    // 碎点
+    for (let i = 0; i < 3; i++) this.hitFx(x + (Math.random() - 0.5) * 0.6, y + (Math.random() - 0.5) * 0.6, color);
+  }
+
+  // 远程打击：弹道飞行，命中后回调出飞字/冲击
+  rangedFx(x0, y0, x1, y1, color = 0xffe08a, onHit = null) {
+    const m = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.42, 6), new THREE.MeshBasicMaterial({ color }));
+    m.position.set(x0, 0.7, y0);
+    const dir = new THREE.Vector3(x1 - x0, 0, y1 - y0).normalize();
+    const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+    m.quaternion.copy(q);
+    this.scene.add(m);
+    const dist = Math.hypot(x1 - x0, y1 - y0);
+    this.projectiles.push({ m, x0, y0, x1, y1, t: 0, dur: Math.max(0.1, dist * 0.03), onHit });
+  }
   aoeFx(x, y, r) {
     const m = new THREE.Mesh(new THREE.RingGeometry(0.2, r, 24), new THREE.MeshBasicMaterial({ color: 0xaa66ff, transparent: true, opacity: 0.7, side: THREE.DoubleSide }));
     m.rotation.x = -Math.PI / 2; m.position.set(x, 0.05, y);
@@ -293,6 +345,27 @@ export class RaidScene {
       if (e.grow) e.m.scale.multiplyScalar(1 + dt * 6);
       if (e.spin) e.m.rotation.z += e.spin * dt;
       if (e.life <= 0) { this.scene.remove(e.m); this.effects.splice(i, 1); }
+    }
+    // 减血飞字：上飘 + 淡出
+    for (let i = this.floaters.length - 1; i >= 0; i--) {
+      const f = this.floaters[i];
+      f.life -= dt;
+      f.spr.position.y += f.vy * dt;
+      f.spr.material.opacity = Math.max(0, f.life / f.maxLife);
+      if (f.life <= 0) { this.scene.remove(f.spr); f.tex.dispose(); this.floaters.splice(i, 1); }
+    }
+    // 弹道飞行：到位后触发命中回调
+    for (let i = this.projectiles.length - 1; i >= 0; i--) {
+      const p = this.projectiles[i];
+      p.t += dt;
+      const k = Math.min(1, p.t / p.dur);
+      p.m.position.set(p.x0 + (p.x1 - p.x0) * k, 0.7, p.y0 + (p.y1 - p.y0) * k);
+      if (k >= 1) {
+        this.hitFx(p.x1, p.y1, 0xffcc44);
+        if (p.onHit) p.onHit();
+        this.scene.remove(p.m);
+        this.projectiles.splice(i, 1);
+      }
     }
   }
 

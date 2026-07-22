@@ -280,8 +280,25 @@ document.getElementById("decoyBtn").onclick = () => { if (bm.phase === "battle")
 let slowmoT = 0; // 慢动作剩余
 function consumeEvents() {
   for (const ev of bm.drainEvents()) {
-    if (ev.t === "hit" && ev.to) scene.hitFx(ev.to.x, ev.to.y);
-    else if (ev.t === "tower_fire" && ev.target) scene.hitFx(ev.target.x, ev.target.y, 0xff8844);
+    if (ev.t === "hit" && ev.to) {
+      const from = ev.from, to = ev.to;
+      const dmg = Math.max(1, Math.round(ev.dmg || 0));
+      const heroAtk = from.team === 0; // 梁山攻→黄字；守军攻→红字
+      const numColor = heroAtk ? "#ffe08a" : "#ff7a5a";
+      if (from.range > 1) {
+        // 远程：弹道飞行，到位出飞字
+        scene.rangedFx(from.x, from.y, to.x, to.y, heroAtk ? 0xffe08a : 0xff8844, () => scene.damageFloat(to.x, to.y, `-${dmg}`, numColor));
+      } else {
+        // 近战：挥砍 + 飞字
+        scene.meleeFx(to.x, to.y, heroAtk ? 0xfff2c8 : 0xff9a7a);
+        scene.damageFloat(to.x, to.y, `-${dmg}`, numColor);
+      }
+    }
+    else if (ev.t === "tower_fire" && ev.target) {
+      // 塔远程打击：橙红弹道 + 红飞字
+      const dmg = Math.max(1, Math.round(ev.dmg || 0));
+      scene.rangedFx(ev.b.x, ev.b.y, ev.target.x, ev.target.y, 0xff8844, () => scene.damageFloat(ev.target.x, ev.target.y, `-${dmg}`, "#ff7a5a"));
+    }
     else if (ev.t === "aoe") scene.aoeFx(ev.x, ev.y, ev.r);
     else if (ev.t === "skill") {
       // 技能差异化特效
@@ -291,7 +308,10 @@ function consumeEvents() {
       else if (ev.skill === "linchong") scene.shake(0.12, 0.2);
       else if (ev.skill === "gongsunsheng") scene.shake(0.08, 0.15);
     }
-    else if (ev.t === "snipe" && ev.target) scene.snipeFx(ev.unit.x, ev.unit.y, ev.target.x, ev.target.y);
+    else if (ev.t === "snipe" && ev.target) {
+      scene.snipeFx(ev.unit.x, ev.unit.y, ev.target.x, ev.target.y);
+      if (ev.dmg) scene.damageFloat(ev.target.x, ev.target.y, `-${Math.round(ev.dmg)}`, "#ffe08a", 1.3);
+    }
     else if (ev.t === "wall_down") { hint("破墙！敌军增援将至", 1800); scene.shake(0.22, 0.35); }
     else if (ev.t === "sentry_fire") hint("哨兵点燃烽火！警报升级", 1800);
     else if (ev.t === "patrol_alarm") hint("巡逻队发现你，报警了！", 1800);

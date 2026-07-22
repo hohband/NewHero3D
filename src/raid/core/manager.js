@@ -299,8 +299,9 @@ export class RealTimeBattleManager {
       // 狙击单体（优先塔/英雄）
       const tgt = this._pickSnipeTarget(u);
       if (tgt) {
-        const r = tgt.takeDamage ? tgt.takeDamage(u.dps * SKILL_FX.snipeMult * mult, now) : this._damageBuilding(tgt, u.dps * SKILL_FX.snipeMult * mult, now);
-        this.events.push({ t: "snipe", unit: u, target: tgt });
+        const dmgAmt = u.dps * SKILL_FX.snipeMult * mult;
+        const r = tgt.takeDamage ? tgt.takeDamage(dmgAmt, now) : this._damageBuilding(tgt, dmgAmt, now);
+        this.events.push({ t: "snipe", unit: u, target: tgt, dmg: (r && r.applied) || dmgAmt });
       }
     } else if (id === "shiqian") {
       u.stealthUntil = now + SKILL_FX.stealthDur;
