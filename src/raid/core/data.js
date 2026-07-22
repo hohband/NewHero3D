@@ -98,6 +98,7 @@ export const FOG = {
   visionRanged: 5,  // 远程视野
   visionShiqian: 6, // 时迁侦察视野
   scoutFullMap: true, // 侦查期全图可见
+  spawnVision: 3,   // 大营部署区常驻可见半径（开局无单位也能看到部署圈）
 };
 
 // ============ 天气环境（v2 §4.8）============

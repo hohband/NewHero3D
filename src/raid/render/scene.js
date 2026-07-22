@@ -23,7 +23,8 @@ export class RaidScene {
     // 摄像机（2.5D 俯视斜视）
     this.camera = new THREE.PerspectiveCamera(46, 1, 0.1, 200);
     this.camTarget = new THREE.Vector3(LEVEL.w / 2, 0, LEVEL.h / 2);
-    this.camDist = 20; this.camAngle = Math.PI / 4; this.camPitch = 0.95;
+    // 初始镜头从部署带（y=0）一侧望向敌寨：部署区在屏幕下方，与文案/设计一致
+    this.camDist = 20; this.camAngle = Math.PI * 1.25; this.camPitch = 0.95;
     this._updateCamera();
 
     // 灯光
@@ -95,9 +96,9 @@ export class RaidScene {
     grid.position.set(LEVEL.w / 2 - 0.5, 0.01, LEVEL.h / 2 - 0.5);
     grid.scale.z = LEVEL.h / LEVEL.w;
     this.scene.add(grid);
-    // 部署区高亮
+    // 部署区高亮（fog:false —— 雾天距离雾也不能吞没部署圈）
     for (const sp of LEVEL.spawnPoints) {
-      const m = new THREE.Mesh(new THREE.CircleGeometry(1.2, 24), new THREE.MeshBasicMaterial({ color: 0x2a7a3a, transparent: true, opacity: 0.35 }));
+      const m = new THREE.Mesh(new THREE.CircleGeometry(1.2, 24), new THREE.MeshBasicMaterial({ color: 0x2a7a3a, transparent: true, opacity: 0.35, fog: false }));
       m.rotation.x = -Math.PI / 2; m.position.set(sp.x, 0.02, sp.y);
       this.scene.add(m);
     }

@@ -137,6 +137,15 @@ export class RealTimeBattleManager {
         if (this.grid.inside(nx, ny)) this.visibleTiles.add(keyOf(nx, ny));
       }
     }
+    // 梁山泊大营（部署区）常驻可见：开局无单位时部署圈不被迷雾吞没
+    const sv = FOG.spawnVision || 0;
+    for (const sp of LEVEL.spawnPoints) {
+      for (let dy = -sv; dy <= sv; dy++) for (let dx = -sv; dx <= sv; dx++) {
+        if (Math.abs(dx) + Math.abs(dy) > sv) continue;
+        const nx = sp.x + dx, ny = sp.y + dy;
+        if (this.grid.inside(nx, ny)) this.visibleTiles.add(keyOf(nx, ny));
+      }
+    }
   }
   isVisible(x, y) {
     if (!FOG.enabled) return true;
