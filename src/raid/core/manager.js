@@ -2,14 +2,15 @@
 // 20Hz 固定步长；逻辑瞬时结算，事件数组供表现层回放；node 可独立运行。
 import { RaidGrid } from "./grid.js";
 import { makeHero, makeEnemy, makeBoss, makeSentry, makeSummon } from "./units.js";
-import { HEROES, BUILDINGS, LEVEL, SCORING, LOOT, RELIEF, SKILL_FX, FOG, WEATHERS, WEATHER_IDS, DECOY, ORDERS_META } from "./data.js";
+import { HEROES, BUILDINGS, ENEMIES, getLevel, SCORING, LOOT, RELIEF, SKILL_FX, FOG, WEATHERS, WEATHER_IDS, DECOY, ORDERS_META } from "./data.js";
 import { keyOf, manhattan } from "../../core/coords.js";
 
 const STEP = 1 / 20; // 50ms
 
 export class RealTimeBattleManager {
-  constructor(roll) {
+  constructor(roll, levelId) {
     this.roll = roll;                  // RollSource
+    this.level = getLevel(levelId);    // 关卡配置（默认 L1）
     this.grid = null;
     this.units = [];                   // 所有实时单位（双方 + 援军 + 哨兵）
     this.buildings = [];               // 建筑实体
@@ -19,8 +20,8 @@ export class RealTimeBattleManager {
     this.phase = "scout";              // scout|battle|end
     this.events = [];
     // 资源
-    this.bingfu = LEVEL.bingfu;
-    this.liangcao = LEVEL.liangcao;
+    this.bingfu = this.level.bingfu;
+    this.liangcao = this.level.liangcao;
     this.deployedHeroes = new Map();   // heroId -> {cost, redeployUntil, alive, everDeployed}
     this.lastDeployTime = -99;
     this.summonCount = 0;
@@ -81,7 +82,7 @@ export class RealTimeBattleManager {
 
   // ---------- 初始化 ----------
   loadLevel() {
-    const L = LEVEL;
+    const L = this.level;
     this.grid = new RaidGrid(L.w, L.h);
     for (let y = 0; y < L.h; y++) for (let x = 0; x < L.w; x++) this.grid.ensure(x, y);
     // 建筑
@@ -98,7 +99,7 @@ export class RealTimeBattleManager {
     for (const d of L.defenders) {
       let u;
       if (d.type === "sentry") u = makeSentry(d.x, d.y);
-      else if (d.type === "boss_zhulong") u = makeBoss(d.type, d.x, d.y);
+      else if (ENEMIES[d.type] && ENEMIES[d.type].tag && ENEMIES[d.type].tag.includes("boss")) u = makeBoss(d.type, d.x, d.y);
       else u = makeEnemy(d.type, d.x, d.y);
       this._place(u);
       this.units.push(u);
@@ -139,7 +140,7 @@ export class RealTimeBattleManager {
     }
     // 梁山泊大营（部署区）常驻可见：开局无单位时部署圈不被迷雾吞没
     const sv = FOG.spawnVision || 0;
-    for (const sp of LEVEL.spawnPoints) {
+    for (const sp of this.level.spawnPoints) {
       for (let dy = -sv; dy <= sv; dy++) for (let dx = -sv; dx <= sv; dx++) {
         if (Math.abs(dx) + Math.abs(dy) > sv) continue;
         const nx = sp.x + dx, ny = sp.y + dy;
@@ -198,7 +199,7 @@ export class RealTimeBattleManager {
     if (liveSame) return { ok: false, reason: "same_name" };
     if (this.bingfu < h.cost) return { ok: false, reason: "bingfu" };
     const liveCount = this.units.filter(u => u.team === 0 && u.alive && u.kind === "hero").length;
-    if (liveCount >= LEVEL.liveCap) return { ok: false, reason: "live_cap" };
+    if (liveCount >= this.level.liveCap) return { ok: false, reason: "live_cap" };
     return { ok: true };
   }
 
@@ -225,7 +226,7 @@ export class RealTimeBattleManager {
     this._unplace(u);
     u.alive = false; u.retreated = true;
     const rec = this.deployedHeroes.get(u.id);
-    if (rec) rec.redeployUntil = this.time + LEVEL.redeployCd;
+    if (rec) rec.redeployUntil = this.time + this.level.redeployCd;
     this.events.push({ t: "retreat", unit: u });
     return true;
   }
@@ -271,7 +272,7 @@ export class RealTimeBattleManager {
       }
     } else if (id === "wuyong") {
       // 召唤援军（独立 summon_cap）
-      for (let i = 0; i < SKILL_FX.summonCount && this.summonCount < LEVEL.summonCap; i++) {
+      for (let i = 0; i < SKILL_FX.summonCount && this.summonCount < this.level.summonCap; i++) {
         const s = makeSummon(u.x + (i ? 1 : -1), u.y, now + SKILL_FX.summonDur);
         this._place(s); this.units.push(s); this.summonCount++;
         this.events.push({ t: "summon", unit: s });
@@ -647,7 +648,7 @@ export class RealTimeBattleManager {
     this.events.push({ t: "dead", unit: u });
     if (u.kind === "hero") {
       const rec = this.deployedHeroes.get(u.id);
-      if (rec) rec.redeployUntil = this.time + LEVEL.redeployCd;
+      if (rec) rec.redeployUntil = this.time + this.level.redeployCd;
       this._unplace(u);
     }
     if (u.isBoss) {

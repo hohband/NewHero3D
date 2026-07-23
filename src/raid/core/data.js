@@ -26,16 +26,24 @@ export const BUILDINGS = {
 };
 
 // ============ 敌方单位 ============
+// v2.1 平衡标定（tools/raid_sim.js，B3/§8.3）：分布式压力梯度。
+// 原值过弱（4 将抱团 100% 胜率 18s 速通）。标定目标 L1：胜率 65–80%、用时 60–100s。
+// 实测落带：庄丁360/15.75、枪兵560/20.25、哨兵80、BOSS祝龙1610/32.5 → 76% 胜 / 72s（50 场，换种子复核）。
 export const ENEMIES = {
-  zhuangding: { id: "zhuangding", name: "庄丁", hp: 90, dps: 7, range: 1, spd: 1.4, tag: ["守军"] },
-  spearman:   { id: "spearman",   name: "枪兵", hp: 140, dps: 9, range: 1, spd: 1.0, tag: ["反突进"] },
-  sentry:     { id: "sentry",     name: "哨兵", hp: 20, dps: 0, range: 0, spd: 0, tag: ["哨兵"], vision: 5 },
-  boss_zhulong: { id: "boss_zhulong", name: "祝龙", hp: 460, dps: 13, range: 1, spd: 1.3, tag: ["boss","守将"] },
+  zhuangding: { id: "zhuangding", name: "庄丁", hp: 360, dps: 15.75, range: 1, spd: 1.4, tag: ["守军"] },
+  spearman:   { id: "spearman",   name: "枪兵", hp: 560, dps: 20.25, range: 1, spd: 1.0, tag: ["反突进"] },
+  sentry:     { id: "sentry",     name: "哨兵", hp: 80, dps: 0, range: 0, spd: 0, tag: ["哨兵"], vision: 5 },
+  boss_zhulong: { id: "boss_zhulong", name: "祝龙", hp: 1610, dps: 32.5, range: 1, spd: 1.3, tag: ["boss","守将"] },
+  // —— L2 曾头市专属兵种（不污染 L1 已标定共享数值）—— 史文恭的精锐铁骑
+  // 铁骑定位为"肉度+低攻"的分布式压力（对齐 L1 庄丁 360hp/15.75 攻的落带经验：
+  // 高血低攻才能扛住提供持续压力，高攻会把难度推成二元团灭）。
+  tieqi: { id: "tieqi", name: "铁骑", hp: 420, dps: 16, range: 1, spd: 1.9, tag: ["骑兵","反突进"] },
+  boss_shiwengong: { id: "boss_shiwengong", name: "史文恭", hp: 2000, dps: 40, range: 1, spd: 1.6, tag: ["boss","骑将"] },
 };
 
 // ============ 关卡 L1 布局 ============
 // 地图 24 x 16。y=0 底（玩家部署带），y 增大向上（敌方核心在顶部）。
-export const LEVEL = {
+export const LEVEL_L1 = {
   id: "L1",
   name: "祝家庄",
   w: 24, h: 16,
@@ -71,6 +79,51 @@ export const LEVEL = {
     { id: "p1", type: "zhuangding", route: [{ x: 5, y: 9 }, { x: 17, y: 9 }], size: 2 },
   ],
 };
+
+// ============ 关卡 L2 布局 ============
+// 曾头市（进阶关）。同一 24x16 地图，但守军更密、箭塔更多、新增精锐铁骑，
+// BOSS 史文恭（杀晁盖者）比祝龙更强。难度须高于 L1，且全程用 L2 专属单位，
+// 不复用/不改 L1 已标定的共享守军数值（庄丁/枪兵/哨兵）。
+export const LEVEL_L2 = {
+  id: "L2",
+  name: "曾头市",
+  w: 24, h: 16,
+  bingfu: 34, liangcao: 170,
+  scoutTime: 8, timeout: 240,
+  deployInterval: 1.5, redeployCd: 20, liveCap: 12, summonCap: 4,
+  spawnPoints: [{ x: 11, y: 1 }],           // 梁山泊大营（底部安全区）
+  buildings: [
+    // 外墙圈（y=6 一线，留门 x=11,12）
+    ...wallRow("outer_wall", 4, 18, 6, [11, 12]),
+    // 内墙圈（y=10 一线，留门 x=11,12）
+    ...wallRow("inner_wall", 7, 16, 10, [11, 12]),
+    // 外翼箭塔（与 L1 同款安全塔位，避免门口绞肉机式二元团灭）
+    { type: "arrow_tower", x: 6, y: 7 },
+    { type: "arrow_tower", x: 17, y: 7 },
+    { type: "watchtower", x: 11, y: 12 },
+    { type: "granary", x: 5, y: 8 },
+    { type: "granary", x: 18, y: 8 },
+    { type: "trap_pit", x: 11, y: 8 },
+    { type: "trap_pit", x: 12, y: 8 },
+    { type: "core", x: 11, y: 13 },
+  ],
+  defenders: [
+    { type: "sentry", x: 11, y: 6 },        // 外门口哨兵
+    { type: "zhuangding", x: 8, y: 11 },
+    { type: "zhuangding", x: 14, y: 11 },
+    { type: "spearman", x: 11, y: 11 },
+    { type: "boss_shiwengong", x: 11, y: 12 }, // BOSS 守核心前（小兵墙对齐 L1，难度来自更强 BOSS + 铁骑游骑）
+  ],
+  patrols: [
+    { id: "p1", type: "tieqi", route: [{ x: 4, y: 9 }, { x: 18, y: 9 }], size: 2 }, // 铁骑游骑
+  ],
+};
+
+// ============ 关卡注册表 ============
+export const LEVELS = { L1: LEVEL_L1, L2: LEVEL_L2 };
+export const LEVEL_IDS = Object.keys(LEVELS);
+export function getLevel(id) { return LEVELS[id] || LEVEL_L1; }
+export const LEVEL = LEVEL_L1; // 兼容旧代码（render/ui/main_raid 仍按 L1 渲染）
 
 function wallRow(type, x0, x1, y, gaps = []) {
   const out = [];
