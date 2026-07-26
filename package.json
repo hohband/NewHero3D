@@ -1,7 +1,7 @@
 {
   "name": "shuihu-3d",
   "version": "1.0.0",
-  "description": "水浒战棋 3D —— Three.js 2.5D 战棋游戏（Godot 版移植）",
+  "description": "水浒 3D —— 刀塔传奇版横版自动战斗（Three.js）",
   "type": "module",
   "scripts": {
     "start": "python3 -m http.server 8080",

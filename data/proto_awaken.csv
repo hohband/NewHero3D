@@ -1,0 +1,11 @@
+﻿unit_id,name,trigger,param,effects
+lin_chong,雪夜上梁山,hp_below,0.3,"buff(atk,0.3,99);buff(crit,0.2,99)"
+lu_zhishen,大闹五台山,hp_below,0.4,"taunt(2);def_up(0.3,2)"
+wu_song,血溅鸳鸯楼,always,0,execute_below(0.3)
+gongsun_sheng,呼风唤雨,on_ult,0,silence_all(2)
+an_daoquan,妙手仁心,battle_start,0,hot_aura(0.02)
+song_wan,云里金刚,hp_below,0.5,"def_up(0.5,3)"
+li_kui,杀红眼,hp_below,0.3,lifesteal(0.3)
+qin_ming,霹雳连营,on_ult,0,"haste(0.5,3)"
+hua_rong,梁山射雁,on_ult,0,rage(50)
+bai_sheng,白日鼠,battle_start,0,"buff(dodge,0.15,99)"

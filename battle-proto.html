@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>水浒 · 横版自动战斗原型</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #14100c; font-family: "PingFang SC", "Microsoft YaHei", sans-serif; }
+  #app { position: relative; width: 100%; height: 100%; }
+  #gl { display: block; width: 100%; height: 100%; }
+  #ui { position: absolute; inset: 0; pointer-events: none; }
+  #ui > * { pointer-events: auto; }
+
+  /* 顶部栏 */
+  #topbar { position: absolute; top: 0; left: 0; right: 0; display: flex; gap: 12px; align-items: center;
+    padding: 10px 16px; background: linear-gradient(180deg, rgba(0,0,0,.55), transparent); color: #f0e6d2; }
+  #topbar h1 { font-size: 16px; font-weight: 600; color: #ffd27a; letter-spacing: 1px; }
+  #topbar .sub { font-size: 12px; color: #c9b989; opacity: .85; }
+  #topbar .spacer { flex: 1; }
+  .tbtn { padding: 6px 14px; background: rgba(30,24,18,.92); border: 1.5px solid #6b543a; border-radius: 7px;
+    color: #f0e6d2; font-size: 13px; cursor: pointer; }
+  .tbtn:hover { border-color: #ffd27a; }
+  .tbtn.on { border-color: #ffd27a; background: rgba(80,60,30,.95); }
+  #hint { font-size: 12px; color: #d8c9a8; }
+
+  /* 大招栏 */
+  #ultbar { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; }
+  .ult { position: relative; width: 92px; padding: 7px 6px 8px; background: rgba(26,20,15,.94); border: 2px solid #6b543a;
+    border-radius: 10px; color: #f0e6d2; text-align: center; cursor: pointer; user-select: none; transition: all .15s; }
+  .ult:hover { border-color: #ffd27a; transform: translateY(-3px); }
+  .ult .key { position: absolute; top: 3px; left: 6px; font-size: 10px; color: #999; }
+  .ult .nm { font-size: 13px; font-weight: 700; margin: 2px 0 1px; }
+  .ult .sk { font-size: 10px; color: #c9a86a; margin-bottom: 5px; min-height: 12px; }
+  .ult .rage { height: 8px; background: #2a2018; border-radius: 4px; overflow: hidden; }
+  .ult .rage > i { display: block; height: 100%; width: 0%; background: linear-gradient(90deg,#e8820a,#ffcf3a); transition: width .12s; }
+  .ult.full { border-color: #ffcf3a; box-shadow: 0 0 14px rgba(255,207,58,.5); animation: pulse 1s infinite; }
+  .ult.full .sk { color: #ffd27a; }
+  .ult.dead { opacity: .35; cursor: not-allowed; }
+  @keyframes pulse { 0%,100%{box-shadow:0 0 8px rgba(255,207,58,.35)} 50%{box-shadow:0 0 20px rgba(255,207,58,.7)} }
+
+  /* 单位头顶血怒条 */
+  .bars { position: absolute; width: 64px; transform: translate(-50%, -100%); pointer-events: none; }
+  .bars .name { font-size: 11px; font-weight: 700; text-align: center; color: #fff; text-shadow: 0 1px 3px #000; margin-bottom: 2px; }
+  .bars .hp { height: 6px; background: rgba(0,0,0,.6); border-radius: 3px; overflow: hidden; }
+  .bars .hp > i { display: block; height: 100%; background: #4fd06a; }
+  .bars.enemy .hp > i { background: #e04b3a; }
+  .bars .rg { height: 4px; background: rgba(0,0,0,.6); border-radius: 2px; overflow: hidden; margin-top: 2px; }
+  .bars .rg > i { display: block; height: 100%; background: #ffb82a; }
+  .bars .cc { font-size: 10px; color:#ffb0c0; text-align:center; text-shadow:0 1px 2px #000; min-height:12px; }
+
+  /* 飘字 */
+  .float { position: absolute; transform: translate(-50%, -50%); font-weight: 800; pointer-events: none;
+    text-shadow: 0 2px 4px rgba(0,0,0,.8); animation: rise .9s ease-out forwards; white-space: nowrap; }
+  @keyframes rise { 0%{opacity:0; margin-top:0} 15%{opacity:1} 100%{opacity:0; margin-top:-56px} }
+
+  /* 连锁指示 */
+  #chain { position: absolute; top: 12%; left: 50%; transform: translateX(-50%); font-size: 26px; font-weight: 900;
+    color: #ff9a3a; text-shadow: 0 0 16px rgba(255,150,60,.8), 0 2px 4px #000; opacity: 0; pointer-events: none; letter-spacing: 2px;
+    transition: opacity .2s; }
+  #chain.show { opacity: 1; }
+
+  /* 大招提示 & 结算 */
+  #ultToast { position: absolute; top: 18%; left: 50%; transform: translateX(-50%); font-size: 40px; font-weight: 900;
+    color: #ffd27a; text-shadow: 0 0 24px rgba(255,180,60,.8), 0 3px 6px #000; opacity: 0; pointer-events: none; letter-spacing: 4px; }
+  #ultToast.show { animation: ultpop 1.1s ease-out forwards; }
+  @keyframes ultpop { 0%{opacity:0; transform:translateX(-50%) scale(.6)} 18%{opacity:1; transform:translateX(-50%) scale(1.12)} 30%{transform:translateX(-50%) scale(1)} 80%{opacity:1} 100%{opacity:0} }
+  #banner { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+    background: rgba(0,0,0,.55); color: #f0e6d2; }
+  #banner.show { display: flex; }
+  #banner h2 { font-size: 44px; color: #ffd27a; letter-spacing: 6px; }
+  #banner p { color: #d8c9a8; }
+
+  #log { position: absolute; top: 54px; left: 16px; font-size: 12px; color: #cdbf9f; max-width: 240px; line-height: 1.5; }
+  #log div { text-shadow: 0 1px 2px #000; opacity: .9; }
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="gl"></canvas>
+  <div id="ui">
+    <div id="topbar">
+      <h1>水浒 · 横版自动战斗原型</h1>
+      <span class="sub">自动普攻攒怒 · 手动大招 · 前后排</span>
+      <div class="spacer"></div>
+      <span id="hint">点敌人集火 · 1-5 放大招</span>
+      <button class="tbtn" id="speedBtn">速度 ×1</button>
+      <button class="tbtn" id="pauseBtn">暂停</button>
+      <button class="tbtn" id="restartBtn">重开</button>
+    </div>
+    <div id="log"></div>
+    <div id="chain"></div>
+    <div id="ultToast"></div>
+    <div id="ultbar"></div>
+    <div id="banner"><h2 id="bannerTitle"></h2><p id="bannerSub"></p><button class="tbtn" id="againBtn">再来一局</button></div>
+  </div>
+</div>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js" } }
+</script>
+<script type="module" src="src/prototype/side_battle.js"></script>
+</body>
+</html>
