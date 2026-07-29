@@ -80,10 +80,11 @@
   <canvas id="gl"></canvas>
   <div id="ui">
     <div id="topbar">
-      <h1>水浒 · 横版自动战斗原型</h1>
-      <span class="sub">自动普攻攒怒 · 手动大招 · 前后排</span>
+      <h1 id="battleTitle">水浒 · 横版自动战斗原型</h1>
+      <span class="sub" id="waveInfo">第 1/1 波</span>
       <div class="spacer"></div>
       <span id="hint">点敌人集火 · 1-5 放大招</span>
+      <button class="tbtn" id="autoBtn">托管</button>
       <button class="tbtn" id="speedBtn">速度 ×1</button>
       <button class="tbtn" id="pauseBtn">暂停</button>
       <button class="tbtn" id="restartBtn">重开</button>
@@ -92,7 +93,7 @@
     <div id="chain"></div>
     <div id="ultToast"></div>
     <div id="ultbar"></div>
-    <div id="banner"><h2 id="bannerTitle"></h2><p id="bannerSub"></p><button class="tbtn" id="againBtn">再来一局</button></div>
+    <div id="banner"><h2 id="bannerTitle"></h2><p id="bannerSub"></p><p id="bannerReward"></p><div style="display:flex;gap:10px;"><button class="tbtn" id="againBtn">再战</button><button class="tbtn" id="hallBtn">返回大厅</button></div></div>
   </div>
 </div>
 <script type="importmap">

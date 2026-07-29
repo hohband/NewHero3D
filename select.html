@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>水浒 · 选将编队</title>
+<link rel="stylesheet" href="src/ui/ui.css">
+<style>
+  .layout { display: grid; grid-template-columns: 1fr 320px; gap: 18px; }
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .card { padding: 10px 12px; background: rgba(26,20,15,.94); border: 1.5px solid #6b543a;
+    border-radius: 10px; cursor: pointer; transition: all .12s; user-select: none; }
+  .card:hover { border-color: #c9a86a; }
+  .card.sel { border-color: #ffd27a; background: rgba(80,60,30,.55); }
+  .card .nm { font-size: 15px; font-weight: 700; }
+  .card .nick { font-size: 11px; color: #c9a86a; margin: 1px 0 4px; }
+  .card .meta { font-size: 11px; color: #c9b989; line-height: 1.7; }
+
+  .board { position: sticky; top: 70px; align-self: start; background: rgba(26,20,15,.94);
+    border: 1.5px solid #6b543a; border-radius: 10px; padding: 14px; }
+  .board h2 { font-size: 15px; color: #ffd27a; letter-spacing: 2px; margin-bottom: 10px; }
+  .slot { display: flex; align-items: center; gap: 8px; padding: 8px 10px; margin-bottom: 8px;
+    background: #1e1812; border: 1px solid #3a2e20; border-radius: 8px; font-size: 13px; }
+  .slot .pos { color: #999; font-size: 11px; width: 14px; }
+  .slot .who { flex: 1; font-weight: 700; }
+  .slot .rowbtn { font-size: 11px; padding: 2px 8px; border-radius: 5px; border: 1px solid #6b543a;
+    background: #2a2018; color: #d8c9a8; cursor: pointer; }
+  .slot .rowbtn.back { color: #8fd0ff; border-color: #3a5a7a; }
+  .slot .mv { font-size: 11px; padding: 2px 5px; border: none; background: none; color: #c9a86a; cursor: pointer; }
+  .slot .mv:disabled { opacity: .3; cursor: default; }
+  .slot.empty { color: #776a52; justify-content: center; font-size: 12px; border-style: dashed; }
+  .board .tip { font-size: 11px; color: #776a52; margin: 8px 0 12px; line-height: 1.6; }
+  .board .actions { display: flex; gap: 8px; }
+  .board .actions .btn { flex: 1; }
+  .back-link { font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1>选将编队</h1>
+  <span id="levelName" style="font-size:12px;color:#c9b989;"></span>
+  <div class="spacer"></div>
+  <a class="back-link" href="hall.html">← 返回大厅</a>
+</div>
+<div class="page">
+  <div class="layout">
+    <div>
+      <div class="section-title">— 点选武将（最多 5 人）—</div>
+      <div class="card-grid" id="cardGrid">加载中……</div>
+    </div>
+    <div class="board">
+      <h2>编队板 <span id="pickCount" style="font-size:12px;color:#c9b989;"></span></h2>
+      <div id="boardList"></div>
+      <p class="tip">点「前排/后排」切换站位；▲▼ 调整出手顺位（slot）；✕ 移出编队。</p>
+      <div class="actions">
+        <button class="btn primary" id="fightBtn" disabled>出战</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script type="module" src="src/ui/select_screen.js"></script>
+</body>
+</html>

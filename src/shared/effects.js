@@ -19,6 +19,10 @@ export const KNOWN_EFFECTS = new Set([
   "random_buff", "steal_buff", "dispel",
   "poison", "burn", "bleed",
   "summon", "aura", "av_mod",
+  // 横版新增（design-hero-skills §7，语义见 sim.js _applyEffect）
+  "taunt", "silence", "silence_all", "expose", "dash_back", "shield",
+  "lifesteal", "revive", "energy_drain", "haste", "act_now", "knockback",
+  "invuln_dying", "heal_cut", "hot_aura",
 ]);
 
 export function parseEffects(str) {

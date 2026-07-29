@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>水浒 · 武将养成</title>
+<link rel="stylesheet" href="src/ui/ui.css">
+<style>
+  .layout { display: grid; grid-template-columns: 300px 1fr; gap: 18px; }
+  .roster { display: flex; flex-direction: column; gap: 6px; max-height: 75vh; overflow-y: auto; }
+  .ritem { display: flex; align-items: center; gap: 8px; padding: 9px 12px; background: rgba(26,20,15,.94);
+    border: 1.5px solid #3a2e20; border-radius: 8px; cursor: pointer; font-size: 13px; }
+  .ritem:hover { border-color: #c9a86a; }
+  .ritem.sel { border-color: #ffd27a; background: rgba(80,60,30,.55); }
+  .ritem .nm { font-weight: 700; flex: 1; }
+  .ritem .lv { font-size: 11px; color: #c9b989; }
+
+  .detail { background: rgba(26,20,15,.94); border: 1.5px solid #6b543a; border-radius: 10px; padding: 20px; }
+  .detail h2 { font-size: 22px; color: #ffd27a; }
+  .detail .nick { color: #c9a86a; font-size: 13px; margin: 4px 0 14px; }
+  .kv { display: grid; grid-template-columns: 90px 1fr; gap: 6px 12px; font-size: 13px; margin-bottom: 16px; }
+  .kv .k { color: #776a52; }
+  .unlock { font-size: 12px; color: #c9b989; line-height: 2; background: #1e1812; border: 1px solid #3a2e20;
+    border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; }
+  .unlock .on { color: #5ae07a; } .unlock .off { color: #776a52; }
+  .ops { display: flex; flex-direction: column; gap: 10px; }
+  .op { display: flex; align-items: center; gap: 12px; }
+  .op .btn { min-width: 130px; }
+  .op .cost { font-size: 12px; color: #c9b989; }
+  .op .cost.lack { color: #ff6a5a; }
+  .toast { min-height: 20px; font-size: 13px; color: #5ae07a; margin-top: 12px; }
+  .back-link { font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1>武将养成</h1>
+  <div class="spacer"></div>
+  <a class="back-link" href="hall.html">← 返回大厅</a>
+</div>
+<div class="resbar" id="resbar"></div>
+<div class="page">
+  <div class="layout">
+    <div class="roster" id="roster"></div>
+    <div class="detail" id="detail">加载中……</div>
+  </div>
+</div>
+<script type="module" src="src/ui/hero_screen.js"></script>
+</body>
+</html>

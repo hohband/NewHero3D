@@ -1,0 +1,32 @@
+/* 游戏外壳公共样式（大厅/选将/养成共用），主题对齐 battle-proto.html */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { min-height: 100%; background: #14100c; color: #f0e6d2; font-family: "PingFang SC", "Microsoft YaHei", sans-serif; }
+a { color: #ffd27a; text-decoration: none; }
+
+.topbar { position: sticky; top: 0; z-index: 10; display: flex; gap: 12px; align-items: center;
+  padding: 12px 20px; background: linear-gradient(180deg, #1e1812, #17120d); border-bottom: 1.5px solid #6b543a; }
+.topbar h1 { font-size: 18px; font-weight: 600; color: #ffd27a; letter-spacing: 2px; }
+.topbar .spacer { flex: 1; }
+
+.btn { padding: 7px 16px; background: rgba(30,24,18,.92); border: 1.5px solid #6b543a; border-radius: 7px;
+  color: #f0e6d2; font-size: 13px; cursor: pointer; font-family: inherit; }
+.btn:hover { border-color: #ffd27a; }
+.btn.primary { border-color: #ffd27a; background: rgba(80,60,30,.95); color: #ffd27a; font-weight: 700; }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn:disabled:hover { border-color: #6b543a; }
+
+.resbar { display: flex; gap: 18px; padding: 10px 20px; background: rgba(30,24,18,.6);
+  border-bottom: 1px solid #3a2e20; font-size: 13px; color: #d8c9a8; }
+.resbar b { color: #ffd27a; margin-left: 4px; }
+
+.page { max-width: 1080px; margin: 0 auto; padding: 20px; }
+.section-title { font-size: 15px; color: #ffd27a; letter-spacing: 2px; margin: 18px 0 10px; }
+
+/* 品质配色 */
+.q-green { color: #6fd06a; } .q-blue { color: #5aa8ff; } .q-purple { color: #c07aff; }
+.q-orange { color: #ff9a3a; } .q-red { color: #ff5a4a; }
+/* tier 徽章 */
+.tier { display: inline-block; min-width: 20px; padding: 1px 6px; border-radius: 4px; font-size: 11px; text-align: center; }
+.tier-0 { background: #2e4a2a; color: #6fd06a; } .tier-1 { background: #243a55; color: #5aa8ff; }
+.tier-2 { background: #3d2a55; color: #c07aff; } .tier-3 { background: #55391e; color: #ff9a3a; }
+.tier-4 { background: #552424; color: #ff5a4a; }

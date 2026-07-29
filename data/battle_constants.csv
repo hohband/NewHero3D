@@ -53,3 +53,11 @@ ai_ult_strategist_min_targets,3,半自动绝技：谋士一次命中数阈值（
 ai_ult_healer_urgent_hp,0.35,半自动绝技：医者濒危队友血量阈值（表16）
 ai_ult_healer_avg_hp,0.6,半自动绝技：医者队友平均血量阈值（表16）
 ai_ult_support_min_targets,4,半自动绝技：辅助覆盖人数阈值（表16）
+rage_on_hit,20,攻击回怒（普攻命中）
+rage_on_heal,12,治疗行为回怒
+rage_refresh_kill,50,refresh_on_kill 连杀回怒
+chain_window,3.0,大招连锁窗口（秒）
+chain_bonus,0.2,大招连锁每层增伤
+row_back_mod,-0.10,后排承伤修正
+battle_hp_scale,1.0,战斗血量全局倍率（调时长主杠杆）
+dot_pct_per_sec,0.02,持续伤害（毒/灼烧/流血）每秒最大生命比例

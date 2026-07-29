@@ -3,8 +3,21 @@
 import * as THREE from "three";
 import { Sim, CLS, SIM_STEP } from "./sim.js";
 import { buildTeams } from "./data.js";
+import { loadSave, storeSave, getHeroStates, getPendingLevel, addRewards, markCleared } from "../ui/save.js";
+import { parseCsvTable } from "../shared/csv.js";
 
 const TEAM_COLOR = { 0: 0x3f8fd0, 1: 0xd0503a };
+
+// GLB 模型加载器（vendor 自 three r160，import 'three' 走 importmap）；加载失败回退胶囊
+let _gltfLoaderPromise = null;
+function getGLTFLoader() {
+  if (!_gltfLoaderPromise) {
+    _gltfLoaderPromise = import("../../vendor/GLTFLoader.js")
+      .then((m) => new m.GLTFLoader())
+      .catch(() => null); // 无 loader 文件时整体回退胶囊网格
+  }
+  return _gltfLoaderPromise;
+}
 
 // 渲染器单例：同一 canvas 只创建一个 WebGL 上下文，重开时复用，避免上下文泄漏
 let _renderer = null;
@@ -114,6 +127,26 @@ class BattleView {
     if (u.side === 1) grp.rotation.y = Math.PI;
     this.unitGroup.add(grp);
     this.meshes.set(u.id, grp);
+    if (u.id === "shi_qian") this._attachGlbModel(grp, body); // 时迁专用 GLB，失败保持胶囊
+  }
+
+  // 加载 assets/models/shiqian.glb 替换胶囊身体（缩放对齐原胶囊身高 ~1.1）；任何失败静默回退
+  async _attachGlbModel(grp, body) {
+    const loader = await getGLTFLoader();
+    if (!loader) return;
+    try {
+      const gltf = await loader.loadAsync("assets/models/shiqian.glb");
+      const model = gltf.scene;
+      const box = new THREE.Box3().setFromObject(model);
+      const h = box.max.y - box.min.y || 1;
+      model.scale.setScalar(1.1 / h);
+      box.setFromObject(model); // 缩放后重算包围盒：脚底贴地、水平居中
+      model.position.y -= box.min.y;
+      model.position.x -= (box.min.x + box.max.x) / 2;
+      model.position.z -= (box.min.z + box.max.z) / 2;
+      body.visible = false;
+      grp.add(model);
+    } catch { /* 模型缺失/解析失败：保持胶囊兜底 */ }
   }
 
   _makeBars(u) {
@@ -220,6 +253,10 @@ class BattleView {
         if (u) { this.float(u.x, 2.5, u.z, `觉醒·${e.name}`, "#ff9a3a", 28); this._spawnRing(u.x, u.z, 0xff9a3a, 3); }
       } else if (e.type === "chain") {
         if (onChain) onChain(e.count);
+      } else if (e.type === "wave_spawn") {
+        if (hooks.onWave) hooks.onWave(`第 ${e.wave}/${e.total} 波来袭`);
+      } else if (e.type === "wave_clear") {
+        if (hooks.onWave) hooks.onWave(`第 ${e.wave}/${e.total} 波已肃清`);
       } else if (e.type === "passive") {
         const u = sim.byId(e.unit);
         if (u) this.float(u.x, 2.2, u.z, `【${e.name}】`, "#e0b0ff", 16);
@@ -309,21 +346,40 @@ class BattleView {
 // ---------- 启动 / HUD ----------
 const canvas = document.getElementById("gl");
 let sim, view, speed = 1, paused = false, raf = null, ended = false, acc = 0, lastT = 0;
-let teamsCache = null;
+let autoUlt = false;            // 托管开关（重开保持）
+let csvCache = null;            // CSV 文本缓存（不含编队，重开按最新存档重装配）
+let currentLevel = null;        // 当前关卡行（结算发奖励用）
+let currentSave = null;         // 本局存档快照（结算写回）
 const ultbar = document.getElementById("ultbar");
 const logEl = document.getElementById("log");
 const ultToast = document.getElementById("ultToast");
 const chainEl = document.getElementById("chain");
+const waveEl = document.getElementById("waveInfo");
+const autoBtn = document.getElementById("autoBtn");
 
-async function ensureTeams() {
-  if (teamsCache) return teamsCache;
-  const [unitsCsv, skillsCsv, awakenCsv] = await Promise.all([
-    fetch("data/units.csv").then((r) => r.text()),
-    fetch("data/skills.csv").then((r) => r.text()),
-    fetch("data/proto_awaken.csv").then((r) => r.text()),
-  ]);
-  teamsCache = buildTeams({ unitsCsv, skillsCsv, awakenCsv });
-  return teamsCache;
+async function ensureCsv() {
+  if (csvCache) return csvCache;
+  const files = ["units", "skills", "proto_awaken", "growth_curve", "battle_constants", "progression", "waves", "levels_proto"];
+  const texts = await Promise.all(files.map((f) => fetch(`data/${f}.csv`).then((r) => r.text())));
+  csvCache = Object.fromEntries(files.map((f, i) => [f, texts[i]]));
+  return csvCache;
+}
+
+// 每局都按最新存档装配：编队/养成改动立即生效
+async function buildBattleTeams() {
+  const csv = await ensureCsv();
+  const save = await loadSave();
+  const levelId = getPendingLevel();
+  currentLevel = parseCsvTable(csv.levels_proto).find((r) => r.level_id === levelId)
+    || parseCsvTable(csv.levels_proto)[0];
+  const teams = buildTeams({
+    unitsCsv: csv.units, skillsCsv: csv.skills, awakenCsv: csv.proto_awaken,
+    growthCsv: csv.growth_curve, constsCsv: csv.battle_constants, progressionCsv: csv.progression,
+    playerFormation: save.formation,
+    wavesCsv: csv.waves, battleId: currentLevel.battle_id,
+    heroStates: getHeroStates(save),
+  });
+  return { teams, save };
 }
 
 function log(msg) {
@@ -372,11 +428,32 @@ function onChain(count) {
   if (chainHideT) clearTimeout(chainHideT);
   chainHideT = setTimeout(() => chainEl.classList.remove("show"), 3000);
 }
-function showBanner(winner) {
-  document.getElementById("bannerTitle").textContent = winner === 0 ? "胜  利" : "战  败";
-  document.getElementById("bannerTitle").style.color = winner === 0 ? "#ffd27a" : "#ff6a5a";
-  document.getElementById("bannerSub").textContent = winner === 0 ? "梁山好汉凯旋而归" : "兄弟们撤回梁山，重整旗鼓";
+// 结算：胜/负 + 评价（S=无阵亡，A=有阵亡，B=战败）+ 发奖写存档
+function showBanner(winner, save) {
+  const win = winner === 0;
+  const rating = win ? (sim.deaths[0].length === 0 ? "S" : "A") : "B";
+  document.getElementById("bannerTitle").textContent = win ? "胜  利" : "战  败";
+  document.getElementById("bannerTitle").style.color = win ? "#ffd27a" : "#ff6a5a";
+  document.getElementById("bannerSub").textContent =
+    `评价 ${rating} · ${win ? (rating === "S" ? "全员生还，毫发无损" : "梁山好汉凯旋而归") : "兄弟们撤回梁山，重整旗鼓"}`;
+  let rewardText = "战败无奖励";
+  if (win && currentLevel && save) {
+    const firstClear = !save.progress.cleared.includes(currentLevel.level_id);
+    const mult = firstClear ? 2 : 1; // 首通双倍
+    const exp = Number(currentLevel.reward_exp) * mult;
+    const mats = Number(currentLevel.reward_mats) * mult;
+    addRewards(save, { exp, mats });
+    markCleared(save, currentLevel.level_id);
+    storeSave(save);
+    rewardText = `获得 经验×${exp} 材料×${mats}${firstClear ? "（首通双倍）" : ""}`;
+  }
+  document.getElementById("bannerReward").textContent = rewardText;
   document.getElementById("banner").classList.add("show");
+}
+
+function refreshWaveInfo() {
+  const wi = sim.waveInfo;
+  waveEl.textContent = `第 ${wi.wave}/${wi.total} 波${wi.pending ? " · 援军逼近…" : ""}`;
 }
 
 function loop(t) {
@@ -387,9 +464,10 @@ function loop(t) {
     acc += dt * speed;
     while (acc >= SIM_STEP) { sim.step(SIM_STEP); acc -= SIM_STEP; }
   }
-  view.sync(dt, { onUlt, onChain });
+  view.sync(dt, { onUlt, onChain, onWave: log });
   refreshUltBar();
-  if (sim.winner >= 0 && !ended) { ended = true; setTimeout(() => showBanner(sim.winner), 700); }
+  refreshWaveInfo();
+  if (sim.winner >= 0 && !ended) { ended = true; setTimeout(() => showBanner(sim.winner, currentSave), 700); }
 }
 
 async function start() {
@@ -398,12 +476,16 @@ async function start() {
   document.querySelectorAll(".bars").forEach((e) => e.remove());
   document.getElementById("banner").classList.remove("show");
   logEl.innerHTML = "";
-  const teams = await ensureTeams();
+  const { teams, save } = await buildBattleTeams();
+  currentSave = save;
   sim = new Sim(teams, 20260727);
+  sim.autoUlt = autoUlt;
   view = new BattleView(canvas, sim);
   buildUltBar();
+  document.getElementById("battleTitle").textContent = `水浒 · ${currentLevel.name}`;
+  refreshWaveInfo();
   ended = false; acc = 0; lastT = performance.now();
-  log("战斗开始：自动普攻攒怒，怒满点下方大招（或按 1-5）");
+  log(`出战「${currentLevel.name}」：自动普攻攒怒，怒满点下方大招（或按 1-5）`);
   raf = requestAnimationFrame(loop);
 }
 
@@ -423,6 +505,14 @@ document.getElementById("pauseBtn").onclick = (e) => {
 };
 document.getElementById("restartBtn").onclick = start;
 document.getElementById("againBtn").onclick = start;
+document.getElementById("hallBtn").onclick = () => (location.href = "hall.html");
+autoBtn.onclick = () => {
+  autoUlt = !autoUlt;
+  if (sim) sim.autoUlt = autoUlt;
+  autoBtn.classList.toggle("on", autoUlt);
+  autoBtn.textContent = autoUlt ? "托管中" : "托管";
+  log(autoUlt ? "托管开启：怒气满自动放大招" : "托管关闭：手动放大招");
+};
 window.addEventListener("keydown", (e) => {
   const players = sim.units.filter((u) => u.side === 0);
   const idx = parseInt(e.key, 10) - 1;

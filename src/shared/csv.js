@@ -9,7 +9,8 @@ export function parseCsvTable(text, warnings = null) {
   let field = "";
   let row = [];
   let inQuotes = false;
-  const pushField = () => { row.push(field); field = ""; };
+  let quoted = false;
+  const pushField = () => { row.push(quoted ? field : field.trim()); field = ""; quoted = false; };
   const pushRow = () => { rows.push(row); row = []; };
   for (let i = 0; i < text.length; i++) {
     const c = text[i];
@@ -19,7 +20,7 @@ export function parseCsvTable(text, warnings = null) {
         else inQuotes = false;
       } else field += c;
     } else if (c === '"') {
-      inQuotes = true;
+      inQuotes = true; quoted = true;
     } else if (c === ",") {
       pushField();
     } else if (c === "\n" || c === "\r") {

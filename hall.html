@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>水浒 · 聚义大厅</title>
+<link rel="stylesheet" href="src/ui/ui.css">
+<style>
+  .level-list { display: flex; flex-direction: column; gap: 10px; }
+  .level { display: flex; align-items: center; gap: 14px; padding: 14px 16px;
+    background: rgba(26,20,15,.94); border: 1.5px solid #6b543a; border-radius: 10px; cursor: pointer; transition: all .15s; }
+  .level:hover { border-color: #ffd27a; transform: translateX(4px); }
+  .level .nm { font-size: 16px; font-weight: 700; color: #f0e6d2; min-width: 130px; }
+  .level .desc { flex: 1; font-size: 12px; color: #c9b989; }
+  .level .meta { font-size: 12px; color: #d8c9a8; text-align: right; line-height: 1.7; }
+  .level .cleared { color: #5ae07a; font-weight: 700; }
+  .level .go { font-size: 12px; color: #ffd27a; border: 1px solid #6b543a; border-radius: 6px; padding: 4px 10px; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1>水浒 · 聚义大厅</h1>
+  <div class="spacer"></div>
+  <button class="btn" id="heroBtn">武将养成</button>
+</div>
+<div class="resbar" id="resbar"></div>
+<div class="page">
+  <div class="section-title">— 征战关卡 —</div>
+  <div class="level-list" id="levelList">加载中……</div>
+</div>
+<script type="module" src="src/ui/hall_screen.js"></script>
+</body>
+</html>

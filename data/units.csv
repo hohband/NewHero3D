@@ -30,3 +30,4 @@ wang_ying,王英,矮脚虎,地微星,blue,infantry,610,95,58,30,82,15,10,5,5,1,1
 gong_wang,龚旺,花项虎,地捷星,blue,archer,540,98,45,40,78,15,10,0,4,2,4,飞枪,act_feijiang,zhang_qing|副将,聚义厅招募,
 ding_desun,丁得孙,中箭虎,地速星,blue,archer,540,96,46,40,80,15,10,0,4,2,4,飞叉,act_feicha,zhang_qing|副将,聚义厅招募,
 yan_qing,燕青,浪子,天巧星,purple,archer,560,104,50,70,86,18,14,0,5,2,4,川弩,act_zhulian,lu_junyi|主仆,聚义厅招募,
+yang_zhi_boss,杨志,青面兽,地煞星,orange,infantry,2200,130,90,40,70,15,8,10,5,1,2,杨家枪,act_yangjia,,,boss

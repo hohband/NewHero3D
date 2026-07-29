@@ -14,3 +14,4 @@ weapon_enhance_gold,100,武器强化消耗金币 = cost × 目标等级
 weapon_refine_max,5,武器精炼阶数上限
 weapon_refine_atk,0.05,武器精炼每阶攻击 +5%
 bond_stat_bonus,5,羁绊激活：双方攻防 +5%（百分比乘区，同 Buff 口径）
+skill_level_max_normal,3,技能等级上限（红阶前；红阶放开到 skill_level_max）
