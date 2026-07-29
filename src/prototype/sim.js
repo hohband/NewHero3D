@@ -31,6 +31,7 @@ const CONST_DEFAULTS = {
   rage_on_skill: 10, rage_on_heal: 12, rage_refresh_kill: 50,
   chain_window: 3.0, chain_bonus: 0.2, row_back_mod: -0.10,
   battle_hp_scale: 1.0, dot_pct_per_sec: 0.02, bond_stat_bonus: 5,
+  battle_time_limit: 120,
 };
 
 // 觉醒技目标推断：含伤害/减益类效果 → 作用于敌方，否则作用于自身/友军
@@ -174,6 +175,14 @@ export class Sim {
   step(dt) {
     if (this.winner >= 0) return;
     this.time += dt;
+    // 超时判定：总血量比例高者胜（刀塔传奇式 TURN_LIMIT）
+    const limit = this.consts.battle_time_limit;
+    if (limit > 0 && this.time >= limit) {
+      const frac = (s) => this.alliesOf(s).reduce((a, u) => a + u.hp / u.maxHp, 0);
+      this.winner = frac(0) > frac(1) ? 0 : 1;
+      this.events.push({ type: "timeout", winner: this.winner });
+      return;
+    }
     this.chain.timer = Math.max(0, this.chain.timer - dt);
     if (this.chain.timer === 0) this.chain.count = 0;
     // 波次刷新计时
