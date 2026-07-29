@@ -62,3 +62,4 @@ row_back_mod,-0.10,后排承伤修正
 battle_hp_scale,1.5,战斗血量全局倍率（调时长主杠杆）
 dot_pct_per_sec,0.02,持续伤害（毒/灼烧/流血）每秒最大生命比例
 battle_time_limit,120,战斗超时（秒）：按双方总血量比例判胜
+ai_ult_max_hold,6,敌方 AI 留大反制上限（秒）：超过即放

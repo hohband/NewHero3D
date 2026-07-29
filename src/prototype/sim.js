@@ -69,7 +69,7 @@ export class Unit {
     this.dashed = false;       // 已突进敌后排（无视前排阻挡）
     this.hotAura = 0; this.lifesteal = 0; this.executeBelow = 0;
     this.awakenFired = false; this.turnTimer = 2.0;
-    this.ultDelay = -1; this._lunge = 0;
+    this.ultDelay = -1; this._lunge = 0; this._ultHold = 0;
     this._bonded = new Set();  // 已生效羁绊对象 id
   }
   get ccLocked() { return this.cc.stun > 0 || this.cc.paralyze > 0 || this.cc.sleep > 0; }
@@ -178,7 +178,7 @@ export class Sim {
     // 超时判定：总血量比例高者胜（刀塔传奇式 TURN_LIMIT）
     const limit = this.consts.battle_time_limit;
     if (limit > 0 && this.time >= limit) {
-      const frac = (s) => this.alliesOf(s).reduce((a, u) => a + u.hp / u.maxHp, 0);
+      const frac = (s) => this.units.filter((u) => u.side === s).reduce((a, u) => a + (u.alive ? u.hp / u.maxHp : 0), 0);
       this.winner = frac(0) > frac(1) ? 0 : 1;
       this.events.push({ type: "timeout", winner: this.winner });
       return;
@@ -209,9 +209,9 @@ export class Sim {
       if (u.awaken && !u.awakenFired && u.awaken.trigger === "hp_below" && u.hp / u.maxHp <= u.awaken.param) this._fireAwaken(u);
       // 大招：敌方 AI 门控 / 玩家托管
       if (u.rage >= 100 && u.silence <= 0 && u.ultDelay < 0) {
-        if (u.side === 1 && this._enemyUltGate(u)) u.ultDelay = 0.8;
+        if (u.side === 1) { if (this._enemyUltGate(u)) u.ultDelay = 0.8; else u._ultHold += dt; }
         else if (u.side === 0 && this.autoUlt && this._autoUltGate(u)) this.castUlt(u);
-      }
+      } else if (u.rage < 100) u._ultHold = 0;
       if (u.ultDelay >= 0) { u.ultDelay -= dt; if (u.ultDelay < 0) this.castUlt(u); }
       // 周期性 turn_start 被动
       u.turnTimer -= dt;
@@ -292,16 +292,16 @@ export class Sim {
     const kind = this._ultKind(u);
     if (kind === "none") return false;
     if (kind === "heal") {
-      // 奶妈留大：有友军残血或已阵亡才放
       return this.deaths[u.side].length > 0 || this.alliesOf(u.side).some((a) => a.hp / a.maxHp < 0.7);
     }
-    if (kind === "defense") return u.hp / u.maxHp < 0.5; // 防御性大招：自身半血以下才放
-    // 输出大招：可斩杀即放；我方无人蓄大（无反制压力）即放；自身危急即放；否则留大
+    if (kind === "defense") return u.hp / u.maxHp < 0.5;
+    // 输出大招：可斩杀即放；自身危急即放；反制保留有上限（憋太久必放）
     const mult = parseFloat(u.ult.parsed.find((e) => e.name === "phys_dmg" || e.name === "mgc_dmg")?.args[0] || 1);
     const est = u.attackStat * mult * 0.9;
     if (this.enemiesOf(u.side).some((t) => t.hp <= est)) return true;
-    if (!this.enemiesOf(u.side).some((t) => t.rage >= 90)) return true;
-    return u.hp / u.maxHp < 0.4;
+    if (u.hp / u.maxHp < 0.4) return true;
+    if (u._ultHold >= (this.consts.ai_ult_max_hold ?? 6)) return true;
+    return !this.enemiesOf(u.side).some((t) => t.rage >= 90);
   }
   _autoUltGate(u) {
     const kind = this._ultKind(u);
