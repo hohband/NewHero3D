@@ -1,4 +1,4 @@
-﻿skill_id,name,owner,type,trigger,range_shape,range_min,range_max,target,cooldown,rage_cost,effects,desc,scope
+skill_id,name,owner,type,trigger,range_shape,range_min,range_max,target,cooldown,rage_cost,effects,desc,scope
 generic_melee,普通攻击（近战）,通用,active,manual,adjacent,1,1,enemy,0,0,phys_dmg(1.0);rage(+20),不耗资源的近战普攻,single
 generic_ranged,普通攻击（远程）,通用,active,manual,diamond,2,5,enemy,0,0,phys_dmg(0.9);rage(+20),不耗资源的远程普攻,single
 ult_fengxue,风雪山神庙,lin_chong,ult,manual,line,1,2,enemy,0,100,phys_dmg(2.2);bonus_by_self_lost_hp(1.0);refresh_on_kill(1),血量越低伤害越高，击杀后刷新行动,single
@@ -14,7 +14,7 @@ ult_taosuo,红棉套索,hu_sanniang,ult,manual,line,1,4,enemy,0,100,phys_dmg(0.8
 act_shenxing,神行百变,dai_zong,active,manual,all,0,99,ally,3,0,"act_now(1);haste(0.3,1)",令1名队友立即行动并全队加速1秒,allies
 act_feiyan,飞檐走壁,shi_qian,active,manual,line,1,4,enemy,2,0,dash_back;steal_buff(1),突进敌后排并偷取1个增益,single
 act_menghan,蒙汗药,sun_erniang,active,manual,adjacent,1,1,enemy,2,0,"phys_dmg(0.6);poison(3);sleep_chance(0.5,1)",攻击附加中毒3回合，50%概率睡眠1回合,single
-act_miaoshou,妙手回春,an_daoquan,active,manual,diamond,0,2,ally,2,0,heal(1.5);dispel(2),范围治疗并驱散2个减益,allies
+act_miaoshou,妙手回春,an_daoquan,active,manual,diamond,0,2,ally,6,0,heal(1.0);dispel(2),范围治疗并驱散2个减益,allies
 act_jieniu,解牛刀法,cao_zheng,active,manual,adjacent,1,1,enemy,2,0,phys_dmg(1.4);bonus_vs_high_def(0.4);bleed(2),对高防目标追加割裂，流血2回合,single
 act_xiangpu,相扑绝技,jiao_ting,active,manual,adjacent,1,1,enemy,3,0,phys_dmg(0.8);swap_position;stun(1),单体摔投换位并眩晕1回合,single
 act_sangmen,丧门剑,bao_xu,active,manual,adjacent,1,1,enemy,2,0,phys_dmg(1.5);execute_below(0.25),对血量低于25%的目标直接斩杀,single
@@ -105,7 +105,7 @@ act_shuangdaochan,双刀缠,hu_sanniang,active,manual,adjacent,1,1,enemy,2,0,phy
 act_feishi,飞石,zhang_qing,active,manual,diamond,2,4,enemy,2,0,phys_dmg(0.9)x2,飞石二连,single
 ult_tiebi,铁壁,song_wan,ult,manual,self,0,0,self,0,100,"taunt(2);block_up(0.3,2)",嘲讽全体并提升格挡,self
 ult_yaojiu,蒙汗药酒,bai_sheng,ult,manual,diamond,0,3,enemy,0,100,sleep(2);hit_rate(0.9),大范围药酒催眠,aoe_all
-ult_huatuo,华佗再世,an_daoquan,ult,manual,all,0,99,ally,0,100,heal(1.6);dispel(99);revive(0.3),全队大奶全驱散并复活最近阵亡友军,allies
+ult_huatuo,华佗再世,an_daoquan,ult,manual,all,0,99,ally,0,100,heal(1.6);dispel(99);revive(0.4),全队大奶全驱散并复活最近阵亡友军,allies
 ult_shenxing,神行万里,dai_zong,ult,manual,all,0,99,ally,0,100,"act_now(2);haste(0.3,2)",两名队友立即行动并全队加速,allies
 ult_lueying,掠影,shi_qian,ult,manual,line,1,4,enemy,0,100,dash_back;phys_dmg(1.8);sure_hit,突进敌后排必中刺杀,single
 ult_heidian,十字坡黑店,sun_erniang,ult,manual,diamond,0,3,enemy,0,100,poison(3);sleep(1),大范围蒙汗药毒睡,aoe_all

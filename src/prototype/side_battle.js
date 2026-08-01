@@ -7,6 +7,13 @@ import { loadSave, storeSave, getHeroStates, getPendingLevel, addRewards, markCl
 import { parseCsvTable } from "../shared/csv.js";
 
 const TEAM_COLOR = { 0: 0x3f8fd0, 1: 0xd0503a };
+// 小技能特效环样式（kind 由 sim._smallKind 推导）
+const SMALLFX_STYLE = {
+  thunder: { color: 0x9a6aff, size: 3.0 },
+  whirl:   { color: 0x5ad0e0, size: 3.4 },
+  slam:    { color: 0xff9a4a, size: 2.6 },
+  support: { color: 0x5ae07a, size: 2.4 },
+};
 
 // GLB 模型加载器（vendor 自 three r160，import 'three' 走 importmap）；加载失败回退胶囊
 let _gltfLoaderPromise = null;
@@ -229,7 +236,8 @@ class BattleView {
         }
       } else if (e.type === "smallfx") {
         const u = sim.byId(e.unit);
-        if (u && (e.kind === "thunder" || e.kind === "whirl" || e.kind === "slam")) this._spawnRing(u.x, u.z, 0xbf9aff, 3);
+        const style = SMALLFX_STYLE[e.kind];
+        if (u && style) this._spawnRing(u.x, u.z, style.color, style.size);
       } else if (e.type === "die") {
         const tgt = sim.byId(e.tgt);
         if (tgt) this.float(tgt.x, 1.6, tgt.z, "阵亡", "#ff5a4a", 24);

@@ -32,6 +32,7 @@ const CONST_DEFAULTS = {
   chain_window: 3.0, chain_bonus: 0.2, row_back_mod: -0.10,
   battle_hp_scale: 1.0, dot_pct_per_sec: 0.02, bond_stat_bonus: 5,
   battle_time_limit: 120,
+  heal_decay_start: 0, heal_decay_rate: 0, heal_decay_min: 0.2,
 };
 
 // 觉醒技目标推断：含伤害/减益类效果 → 作用于敌方，否则作用于自身/友军
@@ -167,6 +168,12 @@ export class Sim {
   }
 
   byId(id) { return this.units.find((u) => u.id === id); }
+  // 治疗衰减（防僵持）：超过 heal_decay_start 秒后，全场治疗效果按 heal_decay_rate/s 线性衰减至 heal_decay_min 下限
+  get healMult() {
+    const s = this.consts.heal_decay_start, r = this.consts.heal_decay_rate;
+    if (!s || !r || this.time <= s) return 1;
+    return Math.max(this.consts.heal_decay_min, 1 - r * (this.time - s));
+  }
   enemiesOf(side) { return this.units.filter((u) => u.alive && u.side !== side); }
   alliesOf(side) { return this.units.filter((u) => u.alive && u.side === side); }
   frontAlive(side) { return this.units.some((u) => u.alive && u.side === side && u.row === "front"); }
@@ -200,7 +207,7 @@ export class Sim {
       if (u.exposeT > 0) { u.exposeT -= dt; if (u.exposeT <= 0) u.row = u.baseRow; }
       for (let i = u.buffs.length - 1; i >= 0; i--) { u.buffs[i].t -= dt; if (u.buffs[i].t <= 0) u.buffs.splice(i, 1); }
       // 团队治疗光环
-      if (this.teamHot[u.side] > 0) u.hp = Math.min(u.maxHp, u.hp + u.maxHp * this.teamHot[u.side] * dt * u.healTaken);
+      if (this.teamHot[u.side] > 0) u.hp = Math.min(u.maxHp, u.hp + u.maxHp * this.teamHot[u.side] * dt * u.healTaken * this.healMult);
       // 持续伤害（毒/灼烧/流血）
       const dot = u._buffSum("dot");
       if (dot > 0) this._damage(null, u, Math.max(1, Math.round(u.maxHp * dot * dt)), { dot: true });
@@ -244,7 +251,7 @@ export class Sim {
     if (!allies.length) return;
     allies.sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp);
     const tgt = allies[0];
-    const amount = Math.round(u.effMgc * 0.9 * tgt.healTaken);
+    const amount = Math.round(u.effMgc * 0.9 * tgt.healTaken * this.healMult);
     tgt.hp = Math.min(tgt.maxHp, tgt.hp + amount);
     u.rage = clamp(u.rage + this.consts.rage_on_heal, 0, 100);
     this.events.push({ type: "heal", src: u.id, tgt: tgt.id, amount });
@@ -431,7 +438,7 @@ export class Sim {
         const mult = parseFloat(e.args[0]) * effectMult;
         for (const t of pool) {
           if (!t.alive) continue;
-          const amount = Math.round(caster.attackStat * mult * t.healTaken);
+          const amount = Math.round(caster.attackStat * mult * t.healTaken * this.healMult);
           t.hp = Math.min(t.maxHp, t.hp + amount);
           this.events.push({ type: "heal", src: caster.id, tgt: t.id, amount });
         }
@@ -566,7 +573,7 @@ export class Sim {
       case "buff": { const f = e.args[0], v = parseFloat(e.args[1]), d = parseFloat(e.args[2] || 1); const tgt = pool[0] && pool[0].side === selfSide ? pool[0] : caster; tgt.buffs.push({ field: f, val: v, t: d }); return; }
       case "debuff_mgc": { const v = parseFloat(e.args[0]), d = parseFloat(e.args[1] || 2); for (const t of pool) if (t.alive) t.buffs.push({ field: "mgc", val: -v, t: d }); return; }
       case "dispel": { const n = parseInt(e.args[0], 10); for (const t of pool) { if (!t.alive) continue; for (const k of ["stun", "paralyze", "sleep", "bind"]) t.cc[k] = 0; let c = 0; for (let i = t.buffs.length - 1; i >= 0 && c < n; i--) if (t.buffs[i].val < 0) { t.buffs.splice(i, 1); c++; } this.events.push({ type: "buffself", unit: t.id, label: "驱散" }); } return; }
-      case "revive": { const v = parseFloat(e.args[0]); const deadId = this.deaths[selfSide].pop(); if (deadId) { const d = this.byId(deadId); if (d) { d.alive = true; d.hp = Math.round(d.maxHp * v); d.rage = 0; this.events.push({ type: "revive", tgt: d.id }); } } return; }
+      case "revive": { const v = parseFloat(e.args[0]); const deadId = this.deaths[selfSide].pop(); if (deadId) { const d = this.byId(deadId); if (d) { d.alive = true; d.hp = Math.max(1, Math.round(d.maxHp * v * this.healMult)); d.rage = 0; this.events.push({ type: "revive", tgt: d.id }); } } return; }
       case "taunt": caster.taunt = Math.max(caster.taunt, parseFloat(e.args[0])); this.events.push({ type: "buffself", unit: caster.id, label: "嘲讽" }); return;
       case "hot_aura": this.teamHot[selfSide] = Math.max(this.teamHot[selfSide], parseFloat(e.args[0])); return;
       case "lifesteal": caster.lifesteal = Math.max(caster.lifesteal, parseFloat(e.args[0])); return;
@@ -614,9 +621,16 @@ export class Sim {
   _castSmall(u) {
     if (!u.small) return;
     const targets = this._resolveTargets(u, u.small);
-    this.events.push({ type: "smallfx", unit: u.id, name: u.small.name });
+    this.events.push({ type: "smallfx", unit: u.id, name: u.small.name, kind: this._smallKind(u) });
     this._exec(u, u.small.parsed, targets, { effectMult: u.small.effectMult || 1 });
     u.rage = clamp(u.rage + this.consts.rage_on_skill, 0, 100);
+  }
+  // 小技能表现类别（表现层按 kind 映射特效环）：法系→thunder、物理AOE→whirl、物理单体→slam、治疗/增益/控制→support
+  _smallKind(u) {
+    const names = u.small.parsed.map((e) => e.name);
+    if (names.includes("mgc_dmg")) return "thunder";
+    if (names.includes("phys_dmg")) return (u.small.scope || "").startsWith("aoe") ? "whirl" : "slam";
+    return "support";
   }
 
   castUlt(u) {
