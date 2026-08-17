@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>时迁 · 骨骼动画预览</title>
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; background: #f0f0f0; font-family: sans-serif; }
+    model-viewer { width: 100vw; height: 100vh; }
+    #bar {
+      position: fixed; left: 12px; bottom: 12px; z-index: 9;
+      display: flex; gap: 8px; align-items: center;
+      background: rgba(255,255,255,.9); padding: 8px 12px; border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    }
+    #bar button {
+      border: 1px solid #ccc; background: #fff; border-radius: 6px;
+      padding: 6px 14px; cursor: pointer; font-size: 14px;
+    }
+    #bar button.on { background: #3f8fd0; color: #fff; border-color: #3f8fd0; }
+    #tip { font-size: 12px; color: #666; }
+  </style>
+</head>
+<body>
+  <model-viewer id="mv" src="shiqian_rigged.glb"
+    camera-controls autoplay animation-name="idle" shadow-intensity="1">
+  </model-viewer>
+  <div id="bar">
+    <button data-a="idle" class="on">待机</button>
+    <button data-a="attack">攻击</button>
+    <button data-a="hit">受击</button>
+    <button data-a="skill">大招</button>
+    <span id="tip">拖拽旋转 · 滚轮缩放</span>
+  </div>
+  <script>
+    const mv = document.getElementById("mv");
+    const btns = [...document.querySelectorAll("#bar button")];
+    // 一次性动作播完回 idle；待机持续循环
+    mv.addEventListener("finished", () => setAnim("idle"));
+    function setAnim(name) {
+      mv.animationName = name;
+      mv.currentTime = 0;
+      mv.play();
+      btns.forEach(b => b.classList.toggle("on", b.dataset.a === name));
+    }
+    btns.forEach(b => b.onclick = () => setAnim(b.dataset.a));
+  </script>
+</body>
+</html>

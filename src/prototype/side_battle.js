@@ -7,6 +7,8 @@ import { loadSave, storeSave, getHeroStates, getPendingLevel, addRewards, markCl
 import { parseCsvTable } from "../shared/csv.js";
 
 const TEAM_COLOR = { 0: 0x3f8fd0, 1: 0xd0503a };
+// 时迁 GLB 的额外 Y 偏航；经 Blender 四向渲染确认模型正脸原生朝 glTF +Z（镜头方向），无需旋转
+const SHIQIAN_YAW = 0;
 // 小技能特效环样式（kind 由 sim._smallKind 推导）
 const SMALLFX_STYLE = {
   thunder: { color: 0x9a6aff, size: 3.0 },
@@ -142,7 +144,9 @@ class BattleView {
     const loader = await getGLTFLoader();
     if (!loader) return;
     try {
-      const gltf = await loader.loadAsync("assets/models/shiqian.glb");
+      let gltf;
+      try { gltf = await loader.loadAsync("assets/models/shiqian_mixamo.glb"); } // Mixamo 质量版，优先
+      catch { gltf = await loader.loadAsync("assets/models/shiqian.glb"); }     // 回退旧版
       const model = gltf.scene;
       const box = new THREE.Box3().setFromObject(model);
       const h = box.max.y - box.min.y || 1;
@@ -151,9 +155,34 @@ class BattleView {
       model.position.y -= box.min.y;
       model.position.x -= (box.min.x + box.max.x) / 2;
       model.position.z -= (box.min.z + box.max.z) / 2;
+      model.rotation.y = SHIQIAN_YAW;
       body.visible = false;
       grp.add(model);
+      // 骨骼动画：GLB 带 idle/attack/hit/skill 时建 mixer，默认循环 idle
+      if (gltf.animations && gltf.animations.length) {
+        const mixer = new THREE.AnimationMixer(model);
+        const actions = {};
+        for (const clip of gltf.animations) actions[clip.name] = mixer.clipAction(clip);
+        grp.userData.mixer = mixer;
+        grp.userData.actions = actions;
+        mixer.addEventListener("finished", () => this._playUnitAnim(grp, "idle")); // 一次性动作播完回 idle
+        this._playUnitAnim(grp, "idle");
+      }
     } catch { /* 模型缺失/解析失败：保持胶囊兜底 */ }
+  }
+
+  // 切换骨骼动画：once=true 播一次（attack/hit/skill），靠 finished 事件回 idle
+  _playUnitAnim(grp, name, once = false) {
+    const ud = grp.userData;
+    if (!ud.actions || !ud.actions[name]) return;
+    const next = ud.actions[name];
+    if (ud.curAnim === next && !once) return;
+    next.reset();
+    next.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
+    next.clampWhenFinished = once;
+    if (ud.curAnim && ud.curAnim !== next) next.crossFadeFrom(ud.curAnim, 0.12, false);
+    next.play();
+    ud.curAnim = next;
   }
 
   _makeBars(u) {
@@ -210,7 +239,11 @@ class BattleView {
       if (e.type === "attack") {
         const att = sim.byId(e.att), tgt = sim.byId(e.tgt);
         if (att && tgt) {
-          if (e.melee) att._lunge = 0.18;
+          if (e.melee) {
+            att._lunge = 0.18;
+            const m = this.meshes.get(att.id);
+            if (m && m.userData.actions) this._playUnitAnim(m, "attack", true); // 近战挥击动作
+          }
           else this._spawnProjectile(att, tgt, att.cls === "archer" ? 0xffe08a : 0xbf9aff);
         }
       } else if (e.type === "damage") {
@@ -220,7 +253,12 @@ class BattleView {
           const size = e.ult ? 30 : e.crit ? 26 : 20;
           this.float(tgt.x, 1.9, tgt.z, `${e.crit ? "暴击 " : ""}-${e.amount}`, color, size);
           const mesh = this.meshes.get(tgt.id);
-          if (mesh) mesh.userData.flash = 0.12;
+          if (mesh) {
+            mesh.userData.flash = 0.12;
+            // 受击动作：仅在 idle 时插播，避免打断攻击/大招
+            const ud = mesh.userData;
+            if (ud.actions && ud.curAnim === ud.actions.idle) this._playUnitAnim(mesh, "hit", true);
+          }
         }
       } else if (e.type === "heal") {
         const tgt = sim.byId(e.tgt);
@@ -232,6 +270,8 @@ class BattleView {
           this.screenFlash();
           this._spawnRing(u.x, u.z, u.side === 0 ? 0xffd75e : 0xff6a4a, 4.2);
           this.float(u.x, 2.4, u.z, u.ultName, "#ffd75e", 30);
+          const m = this.meshes.get(u.id);
+          if (m && m.userData.actions) this._playUnitAnim(m, "skill", true); // 大招跳劈动作
           if (onUlt) onUlt(u);
         }
       } else if (e.type === "smallfx") {
@@ -275,6 +315,7 @@ class BattleView {
       const mesh = this.meshes.get(u.id);
       if (!mesh) continue;
       const ud = mesh.userData;
+      if (u.alive && ud.mixer) ud.mixer.update(dt); // 推进骨骼动画（阵亡定格随组倾倒）
       if (u.alive) {
         mesh.visible = true;
         mesh.position.x += (u.x - mesh.position.x) * Math.min(1, dt * 10);
