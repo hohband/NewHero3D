@@ -1,0 +1,62 @@
+{
+  "id": "21813187-a51b-413e-8872-c457719af485",
+  "userId": "069a9d013bf6438d80bd6693782c5d14",
+  "env": "prod",
+  "businessType": "image3d",
+  "sceneType": "playGround3D-2.0",
+  "modelType": "image2ModelV3.1",
+  "style": "",
+  "modelUrl3d": {},
+  "imageList": [
+    "https://hunyuan-base-prod-1258344703.cos.ap-guangzhou.myqcloud.com/hunyuan3d/default/3576eac2/2026091502171944_a64e316f13e576dfdf9fec399007e793.png?q-sign-algorithm=sha1&q-ak=AKIDRl074nOsGdJ9zjMsCRWP3ShmgS3VtX4S&q-sign-time=1789409851;1820945851&q-key-time=1789409851;1820945851&q-header-list=&q-url-param-list=&q-signature=765e1b0fc48e811bd0a1ed3161a7130c9b959995"
+  ],
+  "n": 1,
+  "status": "success",
+  "result": [
+    {
+      "taskId": "r_8d83d271b06811f1b8ab7e059e38f1f1",
+      "assetId": "dea6dc9a-a6c3-4284-a5e7-8b69ea47a4da",
+      "status": "success",
+      "urlResult": {
+        "glb": "https://hunyuan-base-prod-1258344703.cos.ap-guangzhou.myqcloud.com/hunyuan3d/default/fb49bcb1-b068-11f1-84d2-7e1ac275a8ad/861c37d5232f0306afafb2352cd745da.glb?q-sign-algorithm=sha1&q-ak=AKIDRl074nOsGdJ9zjMsCRWP3ShmgS3VtX4S&q-sign-time=1789410037;1820946037&q-key-time=1789410037;1820946037&q-header-list=&q-url-param-list=&q-signature=d02f2c0a2d3d5d6b4081635c959e7777123fc5a1",
+        "obj": "https://hunyuan-base-prod-1258344703.cos.ap-guangzhou.myqcloud.com/hunyuan3d/default/fb49bcb1-b068-11f1-84d2-7e1ac275a8ad/1b69de6ee1af595906f4f9565b1c6b59.zip?q-sign-algorithm=sha1&q-ak=AKIDRl074nOsGdJ9zjMsCRWP3ShmgS3VtX4S&q-sign-time=1789410042;1820946042&q-key-time=1789410042;1820946042&q-header-list=&q-url-param-list=&q-signature=9ef5be4d117926abbcdccae8805e13f547712f4d",
+        "mtl": "https://hunyuan-base-prod-1258344703.cos.ap-guangzhou.myqcloud.com/hunyuan3d/default/fb49bcb1-b068-11f1-84d2-7e1ac275a8ad/fa82fc92714bf7fd1f42feba2f79743a.mtl?q-sign-algorithm=sha1&q-ak=AKIDRl074nOsGdJ9zjMsCRWP3ShmgS3VtX4S&q-sign-time=1789410036;1820946036&q-key-time=1789410036;1820946036&q-header-list=&q-url-param-list=&q-signature=73843d210a70a43301c71cd8a841f30ded127e0f",
+        "image_url": "https://hunyuan-base-prod-1258344703.cos.ap-guangzhou.myqcloud.com/hunyuan3d/default/fb49bcb1-b068-11f1-84d2-7e1ac275a8ad/73efeb5fa22b73d4da55b1ca56a8545a.png?q-sign-algorithm=sha1&q-ak=AKIDRl074nOsGdJ9zjMsCRWP3ShmgS3VtX4S&q-sign-time=1789410036;1820946036&q-key-time=1789410036;1820946036&q-header-list=&q-url-param-list=&q-signature=609478ba95f9c44e8eed2b5241be4fa53173073d",
+        "geometryGlb": "https://hunyuan-base-prod-1258344703.cos.ap-guangzhou.myqcloud.com/hunyuan3d/default/9d51edd80faa4b97402e8758a69d90ee.glb?q-sign-algorithm=sha1&q-ak=AKIDRl074nOsGdJ9zjMsCRWP3ShmgS3VtX4S&q-sign-time=1789409952;1821032352&q-key-time=1789409952;1821032352&q-header-list=&q-url-param-list=&q-signature=8d42e286fb0ae58ed796464f452d912d9b8e93ca",
+        "textureObj": "https://hunyuan-base-prod-1258344703.cos.ap-guangzhou.myqcloud.com/hunyuan3d/default/fb49bcb1-b068-11f1-84d2-7e1ac275a8ad/1b69de6ee1af595906f4f9565b1c6b59.zip?q-sign-algorithm=sha1&q-ak=AKIDRl074nOsGdJ9zjMsCRWP3ShmgS3VtX4S&q-sign-time=1789410042;1820946042&q-key-time=1789410042;1820946042&q-header-list=&q-url-param-list=&q-signature=9ef5be4d117926abbcdccae8805e13f547712f4d",
+        "textureGlb": "https://hunyuan-base-prod-1258344703.cos.ap-guangzhou.myqcloud.com/hunyuan3d/default/fb49bcb1-b068-11f1-84d2-7e1ac275a8ad/861c37d5232f0306afafb2352cd745da.glb?q-sign-algorithm=sha1&q-ak=AKIDRl074nOsGdJ9zjMsCRWP3ShmgS3VtX4S&q-sign-time=1789410037;1820946037&q-key-time=1789410037;1820946037&q-header-list=&q-url-param-list=&q-signature=d02f2c0a2d3d5d6b4081635c959e7777123fc5a1",
+        "obj_url": "https://hunyuan-base-prod-1258344703.cos.ap-guangzhou.myqcloud.com/hunyuan3d/default/fb49bcb1-b068-11f1-84d2-7e1ac275a8ad/d6098e76bbc625e3058a09d308d4f59d.obj?q-sign-algorithm=sha1&q-ak=AKIDRl074nOsGdJ9zjMsCRWP3ShmgS3VtX4S&q-sign-time=1789410036;1820946036&q-key-time=1789410036;1820946036&q-header-list=&q-url-param-list=&q-signature=332fd5bbca54535c2c8e84515415f8b0ff4dade8",
+        "pbrMetallicImage": "https://hunyuan-base-prod-1258344703.cos.ap-guangzhou.myqcloud.com/hunyuan3d/default/fb49bcb1-b068-11f1-84d2-7e1ac275a8ad/4b6d23c6598557430daf247941a9cb91.png?q-sign-algorithm=sha1&q-ak=AKIDRl074nOsGdJ9zjMsCRWP3ShmgS3VtX4S&q-sign-time=1789410036;1820946036&q-key-time=1789410036;1820946036&q-header-list=&q-url-param-list=&q-signature=6b501bb831f9b06dad0c5a0dcdca5970d78800c4",
+        "pbrRoughnessImage": "https://hunyuan-base-prod-1258344703.cos.ap-guangzhou.myqcloud.com/hunyuan3d/default/fb49bcb1-b068-11f1-84d2-7e1ac275a8ad/ee588584ada4dc18cd36340554951d58.png?q-sign-algorithm=sha1&q-ak=AKIDRl074nOsGdJ9zjMsCRWP3ShmgS3VtX4S&q-sign-time=1789410036;1820946036&q-key-time=1789410036;1820946036&q-header-list=&q-url-param-list=&q-signature=c595bbe1f1cd129f77cc8a8293a19259f3444e3b",
+        "pbrNormalImage": "https://hunyuan-base-prod-1258344703.cos.ap-guangzhou.myqcloud.com/hunyuan3d/default/fb49bcb1-b068-11f1-84d2-7e1ac275a8ad/a5456eb2132c49594eb65a429d2b7d6e.png?q-sign-algorithm=sha1&q-ak=AKIDRl074nOsGdJ9zjMsCRWP3ShmgS3VtX4S&q-sign-time=1789410036;1820946036&q-key-time=1789410036;1820946036&q-header-list=&q-url-param-list=&q-signature=9b58456bf8298004fee9383033c97dc99320e9f1",
+        "pbrImage": "https://hunyuan-base-prod-1258344703.cos.ap-guangzhou.myqcloud.com/hunyuan3d/default/fb49bcb1-b068-11f1-84d2-7e1ac275a8ad/0bd05e7d0049d9ef9205ea098563fc42.png?q-sign-algorithm=sha1&q-ak=AKIDRl074nOsGdJ9zjMsCRWP3ShmgS3VtX4S&q-sign-time=1789410036;1820946036&q-key-time=1789410036;1820946036&q-header-list=&q-url-param-list=&q-signature=951f5af1188e768a25653b2b656610c5d9d4f2b4",
+        "invisible_wall": null,
+        "air_wall": {}
+      },
+      "intermediate_outputs": {
+        "geometry": {
+          "glb_url": "https://hunyuan-base-prod-1258344703.cos.ap-guangzhou.myqcloud.com/hunyuan3d/default/9d51edd80faa4b97402e8758a69d90ee.glb?q-sign-algorithm=sha1&q-ak=AKIDRl074nOsGdJ9zjMsCRWP3ShmgS3VtX4S&q-sign-time=1789409952;1821032352&q-key-time=1789409952;1821032352&q-header-list=&q-url-param-list=&q-signature=8d42e286fb0ae58ed796464f452d912d9b8e93ca",
+          "image_url": "https://hunyuan-base-prod-1258344703.cos.ap-guangzhou.myqcloud.com/hunyuan3d/default/fef940aa8fc819d960b95c85cabbf994.png?q-sign-algorithm=sha1&q-ak=AKIDRl074nOsGdJ9zjMsCRWP3ShmgS3VtX4S&q-sign-time=1789409952;1821032352&q-key-time=1789409952;1821032352&q-header-list=&q-url-param-list=&q-signature=d9452206bcb792d807b7e636534f2f78418bd634",
+          "created": 1789409952
+        }
+      },
+      "createdAt": 1789409851,
+      "startedAt": 1789409852,
+      "updatedAt": 1789410036
+    }
+  ],
+  "traceId": "27f4d88a7a5f4f4ab05b3fdf9427f869",
+  "taskId": "r_8d83d271b06811f1b8ab7e059e38f1f1",
+  "createdAt": 1789409851,
+  "updatedAt": 1789410042,
+  "deletedAt": 0,
+  "enable_pbr": true,
+  "motionType": 0,
+  "mesh": {},
+  "faceCount": 50000,
+  "sceneVersion": "3.1",
+  "foregroundParams": {
+    "invisible_wall": null
+  },
+  "costType": "quota"
+}

@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:,">
+<title>水浒 3D · 角色模型查看器</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #ecebe6;
+    font-family: "PingFang SC", "Microsoft YaHei", sans-serif; color: #2c2c2a; }
+  #gl { display: block; width: 100%; height: 100%; }
+
+  .panel { position: absolute; background: rgba(255,255,255,.92); border: 1px solid #cfcdc4;
+    border-radius: 10px; backdrop-filter: blur(6px); }
+
+  #head { top: 14px; left: 14px; padding: 10px 14px; min-width: 190px; }
+  #head h1 { font-size: 15px; font-weight: 600; }
+  #head .sub { font-size: 12px; color: #5f5e5a; margin-top: 2px; }
+  #stats { font-size: 11px; color: #5f5e5a; margin-top: 8px; line-height: 1.7; font-family: ui-monospace, monospace; }
+  #stats b { color: #0f6e56; font-weight: 500; }
+
+  #bar { bottom: 14px; left: 50%; transform: translateX(-50%); padding: 8px 10px;
+    display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: center; max-width: calc(100% - 28px); }
+  #bar button { border: 1px solid #c4c2b8; background: #fff; border-radius: 7px; padding: 6px 13px;
+    font-size: 13px; color: #2c2c2a; cursor: pointer; font-family: inherit; white-space: nowrap; }
+  #bar button:hover { border-color: #888780; }
+  #bar button.on { background: #0f6e56; border-color: #0f6e56; color: #fff; }
+  #bar button:disabled { opacity: .4; cursor: not-allowed; }
+  #bar .sep { width: 1px; height: 22px; background: #dcdad2; margin: 0 4px; }
+  #bar .lbl { font-size: 12px; color: #888780; margin-right: 2px; }
+
+  #models { top: 14px; right: 14px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; min-width: 176px; }
+  #models .lbl { font-size: 12px; color: #888780; }
+  #models button { border: 1px solid #c4c2b8; background: #fff; border-radius: 7px; padding: 6px 10px;
+    font-size: 12px; text-align: left; cursor: pointer; font-family: inherit; line-height: 1.4; }
+  #models button small { display: block; color: #888780; font-size: 11px; }
+  #models button.on { border-color: #0f6e56; background: #e1f5ee; }
+  #models button.on small { color: #0f6e56; }
+
+  #tip { bottom: 14px; right: 14px; padding: 7px 11px; font-size: 11px; color: #5f5e5a; text-align: right; }
+  #loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: #5f5e5a; background: #ecebe6; z-index: 20; }
+  #loading.hide { display: none; }
+  #err { max-width: 70%; text-align: center; color: #a32d2d; font-size: 13px; line-height: 1.7; }
+  @media (max-width: 720px) { #stats { display: none; } #models { min-width: 0; } }
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+
+<div id="head" class="panel">
+  <h1 id="title">时迁 · 鼓上蚤</h1>
+  <div class="sub" id="subtitle">加载中…</div>
+  <div id="stats"></div>
+</div>
+
+<div id="models" class="panel">
+  <span class="lbl">模型版本</span>
+  <button data-m="assets/models/shiqian_rigged.glb" class="on">绑骨动画版<small>4.3MB · 4 段动作</small></button>
+  <button data-m="assets/models/shiqian_ai.glb">图生 3D 静态版<small>28.9MB · 无骨骼</small></button>
+  <button data-m="assets/models/shiqian_legacy.glb">初版低模<small>79KB · 无骨骼</small></button>
+</div>
+
+<div id="bar" class="panel">
+  <span class="lbl">动作</span>
+  <button data-a="idle" class="on">待机</button>
+  <button data-a="attack">攻击</button>
+  <button data-a="hit">受击</button>
+  <button data-a="skill">大招</button>
+  <div class="sep"></div>
+  <button id="btnSpin">自动旋转</button>
+  <button id="btnBones">骨骼</button>
+  <button id="btnBox">包围盒</button>
+</div>
+
+<div id="tip" class="panel">拖拽旋转 · 滚轮缩放</div>
+<div id="loading"><span id="err">正在加载模型…</span></div>
+
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js" } }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { GLTFLoader } from "./vendor/GLTFLoader.js";
+
+// ── URL 参数：?m=<glb路径>&anim=<动作>&t=<秒>&spin=1&bones=1&box=1&bg=light ──
+const Q = new URLSearchParams(location.search);
+const DEFAULT_MODEL = Q.get("m") || "assets/models/shiqian_rigged.glb";
+
+const canvas = document.getElementById("gl");
+const elLoading = document.getElementById("loading");
+const elErr = document.getElementById("err");
+const elStats = document.getElementById("stats");
+const elSubtitle = document.getElementById("subtitle");
+const elTitle = document.getElementById("title");
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xecebe6);
+
+const camera = new THREE.PerspectiveCamera(35, 1, 0.05, 200);
+
+// 中性三点光：主光暖、补光冷、轮廓光提亮边缘
+const key = new THREE.DirectionalLight(0xfff2e0, 2.2); key.position.set(3, 6, 4.5); scene.add(key);
+const fill = new THREE.DirectionalLight(0xcfe0ff, 0.85); fill.position.set(-4.5, 2.5, 3); scene.add(fill);
+const rim = new THREE.DirectionalLight(0xffffff, 1.1); rim.position.set(-1.5, 3.5, -5); scene.add(rim);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xb8b4a8, 1.15));
+
+const floor = new THREE.GridHelper(12, 24, 0xb4b2a9, 0xd3d1c7);
+floor.material.transparent = true; floor.material.opacity = 0.75;
+scene.add(floor);
+
+// ── 极简轨道控制（不引 OrbitControls，保持零外部依赖）──
+const orbit = { theta: Math.PI * 0.06, phi: Math.PI * 0.46, radius: 3.4, target: new THREE.Vector3(0, 0.9, 0) };
+let dragging = false, lastX = 0, lastY = 0;
+canvas.addEventListener("pointerdown", (e) => { dragging = true; lastX = e.clientX; lastY = e.clientY; canvas.setPointerCapture(e.pointerId); });
+canvas.addEventListener("pointerup", (e) => { dragging = false; try { canvas.releasePointerCapture(e.pointerId); } catch {} });
+canvas.addEventListener("pointermove", (e) => {
+  if (!dragging) return;
+  orbit.theta -= (e.clientX - lastX) * 0.006;
+  orbit.phi = Math.min(Math.PI - 0.08, Math.max(0.08, orbit.phi - (e.clientY - lastY) * 0.006));
+  lastX = e.clientX; lastY = e.clientY;
+});
+canvas.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  orbit.radius = Math.min(12, Math.max(0.8, orbit.radius * (1 + Math.sign(e.deltaY) * 0.1)));
+}, { passive: false });
+
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+addEventListener("resize", resize); resize();
+
+// ── 模型加载与装配 ──
+const loader = new GLTFLoader();
+let root = null, mixer = null, actions = {}, cur = null, skel = null, boxHelper = null;
+let autoSpin = Q.get("spin") === "1";
+let showBones = Q.get("bones") === "1";
+let showBox = Q.get("box") === "1";
+
+const btnSpin = document.getElementById("btnSpin");
+const btnBones = document.getElementById("btnBones");
+const btnBox = document.getElementById("btnBox");
+btnSpin.classList.toggle("on", autoSpin);
+btnBones.classList.toggle("on", showBones);
+btnBox.classList.toggle("on", showBox);
+btnSpin.onclick = () => { autoSpin = !autoSpin; btnSpin.classList.toggle("on", autoSpin); };
+btnBones.onclick = () => { showBones = !showBones; btnBones.classList.toggle("on", showBones); if (skel) skel.visible = showBones; };
+btnBox.onclick = () => { showBox = !showBox; btnBox.classList.toggle("on", showBox); if (boxHelper) boxHelper.visible = showBox; };
+
+// 按整段动画的骨骼活动范围取景：动作镜头（跳跃/突进）不会冲出画面
+// 采样期间挂起 LoopOnce 的 finished 回调，否则会把动作播完并切回待机
+let framing = false;
+function frameClip(name) {
+  const act = actions[name];
+  if (!act || !mixer) return;
+  const clip = act.getClip();
+  const v = new THREE.Vector3(), b = new THREE.Box3();
+  const prev = mixer.time;
+  framing = true;
+  act.setLoop(THREE.LoopRepeat, Infinity);
+  for (let i = 0; i <= 24; i++) {
+    mixer.setTime(clip.duration * i / 24);
+    root.updateMatrixWorld(true);
+    root.traverse(o => { if (o.isBone) b.expandByPoint(o.getWorldPosition(v)); });
+  }
+  mixer.setTime(prev);
+  framing = false;
+  if (b.isEmpty()) return;
+  orbit.target.set(0, (b.min.y + b.max.y) / 2, 0);
+  const need = (b.max.y - b.min.y + 0.3) / (2 * Math.tan((camera.fov * Math.PI / 180) / 2));
+  orbit.radius = Math.max(2.8, need * 1.2);
+}
+
+function setAnim(name, opts = {}) {
+  if (!actions[name]) return;
+  const next = actions[name];
+  next.enabled = true;
+  next.setEffectiveWeight(1);
+  next.setLoop(opts.once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
+  next.clampWhenFinished = !!opts.once;
+  next.reset().play();
+  if (cur && cur !== next) next.crossFadeFrom(cur, 0.15, false);
+  cur = next;
+  document.querySelectorAll("#bar button[data-a]").forEach(b => b.classList.toggle("on", b.dataset.a === name));
+}
+
+function clearModel() {
+  if (root) {
+    scene.remove(root);
+    root.traverse(o => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) {
+        const ms = Array.isArray(o.material) ? o.material : [o.material];
+        ms.forEach(m => { for (const k of ["map", "normalMap", "metalnessMap", "roughnessMap", "emissiveMap", "aoMap"])
+          if (m[k]) m[k].dispose(); m.dispose(); });
+      }
+    });
+  }
+  if (skel) { scene.remove(skel); skel = null; }
+  if (boxHelper) { scene.remove(boxHelper); boxHelper = null; }
+  if (mixer) { mixer.stopAllAction(); mixer = null; }
+  root = null; actions = {}; cur = null;
+}
+
+async function load(path) {
+  elLoading.classList.remove("hide");
+  elErr.textContent = "正在加载模型…";
+  clearModel();
+  let gltf;
+  try {
+    gltf = await loader.loadAsync(path);
+  } catch (e) {
+    elErr.innerHTML = `模型加载失败：<br>${path}<br><small>${e && e.message ? e.message : e}</small><br><br>请确认通过 HTTP 服务访问（如 <code>npm start</code>），file:// 下浏览器会拦截模块与 GLB 请求。`;
+    return;
+  }
+  root = gltf.scene;
+  root.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = false; if (o.material) o.material.side = THREE.FrontSide; } });
+
+  // 归一化：身高 1.75、脚底贴地、水平居中，便于三版模型同机位对比
+  // 注意：SkinnedMesh 的几何包围盒可能不含骨骼变换，故两轮迭代校正（缩放后重测）
+  const measure = () => {
+    root.updateMatrixWorld(true);
+    const b = new THREE.Box3();
+    b.setFromObject(root);
+    const p = new THREE.Vector3();
+    root.traverse(o => { if (o.isBone) b.expandByPoint(o.getWorldPosition(p)); });
+    return b;
+  };
+  let box = measure();
+  for (let pass = 0; pass < 3; pass++) {
+    const hh = box.max.y - box.min.y;
+    if (!(hh > 1e-6)) break;
+    root.scale.multiplyScalar(1.75 / hh);
+    box = measure();
+  }
+  root.position.y -= box.min.y;
+  root.position.x -= (box.min.x + box.max.x) / 2;
+  root.position.z -= (box.min.z + box.max.z) / 2;
+  root.updateMatrixWorld(true);
+  if (Q.get("debug") === "1") console.log("[viewer] box", box.min.toArray().map(n => +n.toFixed(3)), box.max.toArray().map(n => +n.toFixed(3)), "scale", root.scale.x);
+  scene.add(root);
+
+  orbit.target.set(0, 1.75 * 0.52, 0);
+  orbit.radius = 3.0;
+
+  // 骨骼 / 包围盒辅助
+  let bones = 0;
+  root.traverse(o => { if (o.isBone) bones++; });
+  if (bones) {
+    skel = new THREE.SkeletonHelper(root);
+    skel.material.depthTest = false;   // 关深度测试，骨骼才不会被身体挡住
+    skel.material.transparent = true;
+    skel.material.opacity = 0.95;
+    skel.renderOrder = 999;
+    skel.visible = showBones;
+    scene.add(skel);
+  }
+  boxHelper = new THREE.Box3Helper(new THREE.Box3().setFromObject(root), 0xd85a30);
+  boxHelper.visible = showBox;
+  scene.add(boxHelper);
+
+  // 动画
+  const clips = (gltf.animations || []).map(c => c.name);
+  if (gltf.animations && gltf.animations.length) {
+    mixer = new THREE.AnimationMixer(root);
+    for (const clip of gltf.animations) actions[clip.name] = mixer.clipAction(clip);
+    mixer.addEventListener("finished", () => { if (!framing) setAnim("idle"); });
+    const want = Q.get("anim");
+    if (want && actions[want]) {
+      setAnim(want, { once: want !== "idle" });
+      frameClip(want);                        // 动作镜头：按整段动画活动范围取景（跳跃/突进不出画）
+      setAnim(want, { once: want !== "idle" }); // 取景会动到 action 状态，重新落位
+    } else setAnim("idle");
+  }
+
+  // 统计信息
+  let tris = 0, meshes = 0, verts = 0;
+  root.traverse(o => {
+    if (!o.isMesh || !o.geometry) return;
+    meshes++;
+    const g = o.geometry, pos = g.attributes.position;
+    if (pos) verts += pos.count;
+    tris += g.index ? g.index.count / 3 : (pos ? pos.count / 3 : 0);
+  });
+  const mats = new Set();
+  root.traverse(o => { if (o.isMesh && o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => mats.add(m.uuid)); } });
+  const kb = (await (await fetch(path)).blob()).size / 1024;
+  const file = path.split("/").pop();
+  elSubtitle.textContent = file;
+  // 标题跟随实际加载的文件（旧版写死「时迁·鼓上蚤」，看别的模型时是错的）
+  elTitle.textContent = file.replace(/\.glb$/i, "");
+  elStats.innerHTML =
+    `顶点 <b>${verts.toLocaleString()}</b> · 三角面 <b>${Math.round(tris).toLocaleString()}</b><br>` +
+    `网格 <b>${meshes}</b> · 材质 <b>${mats.size}</b> · 骨骼 <b>${bones || "无"}</b><br>` +
+    `动作 <b>${clips.length ? clips.join(" / ") : "静态网格"}</b><br>` +
+    `文件 <b>${kb > 1024 ? (kb / 1024).toFixed(1) + " MB" : kb.toFixed(0) + " KB"}</b>`;
+
+  document.querySelectorAll("#bar button[data-a]").forEach(b => { b.disabled = !actions[b.dataset.a]; });
+  document.querySelectorAll("#models button").forEach(b => b.classList.toggle("on", b.dataset.m === path));
+
+  // 截图用：锁定到指定帧
+  const t = parseFloat(Q.get("t"));
+  if (mixer && !isNaN(t)) { mixer.setTime(t); mixer.timeScale = 0; }
+
+  elLoading.classList.add("hide");
+  window.__viewerReady = true;
+}
+
+// 调试/自动化接口：供截图脚本挑「最有张力的一帧」
+window.__clipDynamic = (name, samples = 32) => {
+  const act = actions[name];
+  if (!act) return [];
+  const clip = act.getClip();
+  const out = [];
+  for (let i = 0; i < samples; i++) {
+    const t = (clip.duration * i) / (samples - 1);
+    let score = 0;
+    for (const tr of clip.tracks) {
+      const v = tr.values, stride = tr.getValueSize();
+      const n = Math.min(v.length / stride, 240);
+      let mean = 0;
+      for (let k = 0; k < n; k++) mean += v[k * stride];
+      mean /= n || 1;
+      const idx = Math.min(n - 1, Math.round((i / (samples - 1)) * (n - 1)));
+      score += Math.abs(v[idx * stride] - mean) + Math.abs(v[idx * stride + (stride > 1 ? 1 : 0)] ?? 0);
+    }
+    out.push({ t: +t.toFixed(3), score: +score.toFixed(2) });
+  }
+  return out;
+};
+window.__viewerInfo = () => ({ clips: Object.keys(actions), frames: window.__frame, ready: !!window.__viewerReady });
+
+document.querySelectorAll("#models button").forEach(b => {
+  b.onclick = () => { history.replaceState(null, "", "?m=" + b.dataset.m); actions = {}; load(b.dataset.m); };
+});
+
+// ── 主循环 ──
+const clock = new THREE.Clock();
+function tick() {
+  requestAnimationFrame(tick);
+  const dt = clock.getDelta();
+  if (autoSpin) orbit.theta += dt * 0.5;
+  camera.position.set(
+    orbit.target.x + orbit.radius * Math.sin(orbit.phi) * Math.sin(orbit.theta),
+    orbit.target.y + orbit.radius * Math.cos(orbit.phi),
+    orbit.target.z + orbit.radius * Math.sin(orbit.phi) * Math.cos(orbit.theta)
+  );
+  camera.lookAt(orbit.target);
+  if (mixer) mixer.update(dt);
+  renderer.render(scene, camera);
+  window.__frame = (window.__frame || 0) + 1;
+}
+tick();
+load(DEFAULT_MODEL);
+</script>
+</body>
+</html>

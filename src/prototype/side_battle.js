@@ -7,8 +7,22 @@ import { loadSave, storeSave, getHeroStates, getPendingLevel, addRewards, markCl
 import { parseCsvTable } from "../shared/csv.js";
 
 const TEAM_COLOR = { 0: 0x3f8fd0, 1: 0xd0503a };
-// 时迁 GLB 的额外 Y 偏航；经 Blender 四向渲染确认模型正脸原生朝 glTF +Z（镜头方向），无需旋转
-const SHIQIAN_YAW = 0;
+// 已有真模型的单位：文件名约定 assets/models/<unit_id>.glb；未列入者保持胶囊（避免无谓 404）
+// 第二批（2026-09-14）：补齐 strategist / support / healer 三个此前全空的职业 + 首个女性角色
+// 第三批（2026-09-15）：按主线出场顺序铺量 —— 这 10 人 = story_01 + story_02 的全部敌方单位，
+//   做完后前两关每个出场单位都有真模型（此前 story_01 敌将 0/3、story_02 0/7 全是胶囊）。
+//   前 5 位是本项目首次做 green（绿）品质的低阶角色。
+const MODEL_UNITS = new Set([
+  "shi_qian", "lin_chong", "lu_zhishen", "wu_song", "hua_rong",
+  "gongsun_sheng", "wu_yong", "li_kui", "qin_ming", "hu_sanniang", "yan_qing", "dai_zong", "an_daoquan",
+  "song_wan", "du_qian", "bai_sheng", "shi_yong", "wang_ying",
+  "wang_dingliu", "sun_erniang", "jiao_ting", "gong_wang", "ding_desun",
+]);
+// 文件名别名：早期资产用了无下划线命名，与 <unit_id>.glb 约定不符。
+// 曾因缺这张表导致 shi_qian.glb 请求 404 → 时迁在战场里静默回退胶囊。
+const MODEL_FILE = { shi_qian: "shiqian.glb" };
+// GLB 的额外 Y 偏航；经 Blender 四向渲染确认本管线模型正脸原生朝 glTF +Z（镜头方向），无需旋转
+const MODEL_YAW = 0;
 // 小技能特效环样式（kind 由 sim._smallKind 推导）
 const SMALLFX_STYLE = {
   thunder: { color: 0x9a6aff, size: 3.0 },
@@ -26,6 +40,34 @@ function getGLTFLoader() {
       .catch(() => null); // 无 loader 文件时整体回退胶囊网格
   }
   return _gltfLoaderPromise;
+}
+
+// 把模型归一到指定身高、脚底贴地、水平居中。
+// 注意：蒙皮网格（SkinnedMesh）的几何包围盒不含骨骼变换，单次测量会把身高算错（模型被放大数倍），
+// 故先「测→缩→重测」迭代 3 轮收敛归一，并把骨骼世界坐标一并计入包围盒。
+function measureBounds(obj) {
+  obj.updateMatrixWorld(true);
+  const b = new THREE.Box3();
+  b.setFromObject(obj);
+  const v = new THREE.Vector3();
+  obj.traverse((o) => { if (o.isBone) b.expandByPoint(o.getWorldPosition(v)); });
+  return b;
+}
+
+function normalizeModel(obj, targetHeight) {
+  let box = measureBounds(obj);
+  for (let pass = 0; pass < 3; pass++) {
+    const h = box.max.y - box.min.y;
+    if (!(h > 1e-6)) break;
+    obj.scale.multiplyScalar(1 / h); // 先归一到身高 1
+    box = measureBounds(obj);
+  }
+  const h = (box.max.y - box.min.y) || 1;
+  obj.scale.multiplyScalar(targetHeight / h);
+  box = measureBounds(obj);
+  obj.position.y -= box.min.y;
+  obj.position.x -= (box.min.x + box.max.x) / 2;
+  obj.position.z -= (box.min.z + box.max.z) / 2;
 }
 
 // 渲染器单例：同一 canvas 只创建一个 WebGL 上下文，重开时复用，避免上下文泄漏
@@ -111,6 +153,19 @@ class BattleView {
     }
   }
 
+  // 补建「后到」的单位。sim.js 构造时只刷第一波（`_spawnWaveCfgs(this.waves[0])`），
+  // 后续波次由 `_startNextWave()` 直接 push 进 sim.units；而视觉层只在构造时按当时的
+  // sim.units 建过一次 → **第 2 波起的敌人没有 3D 组、也没有血条**，
+  // 表现上就是「看不见的敌人在打你」（战斗日志里它照样放技能）。
+  // 2026-09-15 第三批验收 story_02 第二波时发现 —— 与模型资产无关，是既有缺口。
+  _buildPendingUnits() {
+    for (const u of this.sim.units) {
+      if (this.meshes.has(u.id)) continue;
+      this._buildUnit(u);
+      this._makeBars(u);
+    }
+  }
+
   _buildUnit(u) {
     const grp = new THREE.Group();
     const c = CLS[u.cls];
@@ -132,31 +187,31 @@ class BattleView {
     grp.add(body, head, weapon, ring);
     grp.position.set(u.x, 0, u.z);
     grp.userData.id = u.id;
-    grp.userData.body = body; grp.userData.ring = ring; grp.userData.flash = 0;
+    // 胶囊占位件的三个 Mesh 都记下来：真模型接上后要一起隐藏。
+    // 曾只隐藏 body 而漏掉 head → 有模型的单位头顶永远飘着一个肤色球（回退胶囊的头）。
+    grp.userData.body = body; grp.userData.head = head; grp.userData.weapon = weapon;
+    grp.userData.ring = ring; grp.userData.flash = 0;
     if (u.side === 1) grp.rotation.y = Math.PI;
     this.unitGroup.add(grp);
     this.meshes.set(u.id, grp);
-    if (u.id === "shi_qian") this._attachGlbModel(grp, body); // 时迁专用 GLB，失败保持胶囊
+    // 按 unit_id 查表加载真模型；无模型或加载失败一律保持胶囊（表现层不因资源缺失而崩）
+    if (MODEL_UNITS.has(u.id)) this._attachGlbModel(grp, `assets/models/${MODEL_FILE[u.id] || `${u.id}.glb`}`);
   }
 
-  // 加载 assets/models/shiqian.glb 替换胶囊身体（缩放对齐原胶囊身高 ~1.1）；任何失败静默回退
-  async _attachGlbModel(grp, body) {
+  // 加载 GLB 替换胶囊占位（身高对齐胶囊 ~1.1）；任何失败静默回退胶囊
+  async _attachGlbModel(grp, url) {
     const loader = await getGLTFLoader();
     if (!loader) return;
     try {
-      let gltf;
-      try { gltf = await loader.loadAsync("assets/models/shiqian_mixamo.glb"); } // Mixamo 质量版，优先
-      catch { gltf = await loader.loadAsync("assets/models/shiqian.glb"); }     // 回退旧版
+      const gltf = await loader.loadAsync(url);
       const model = gltf.scene;
-      const box = new THREE.Box3().setFromObject(model);
-      const h = box.max.y - box.min.y || 1;
-      model.scale.setScalar(1.1 / h);
-      box.setFromObject(model); // 缩放后重算包围盒：脚底贴地、水平居中
-      model.position.y -= box.min.y;
-      model.position.x -= (box.min.x + box.max.x) / 2;
-      model.position.z -= (box.min.z + box.max.z) / 2;
-      model.rotation.y = SHIQIAN_YAW;
-      body.visible = false;
+      normalizeModel(model, 1.1);
+      model.rotation.y = MODEL_YAW;
+      // 占位胶囊要整组隐藏（身体 + 头 + 那根示意武器棒），只留脚下的队伍色环
+      for (const k of ["body", "head", "weapon"]) {
+        const ph = grp.userData[k];
+        if (ph) ph.visible = false;
+      }
       grp.add(model);
       // 骨骼动画：GLB 带 idle/attack/hit/skill 时建 mixer，默认循环 idle
       if (gltf.animations && gltf.animations.length) {
@@ -303,6 +358,8 @@ class BattleView {
         if (onChain) onChain(e.count);
       } else if (e.type === "wave_spawn") {
         if (hooks.onWave) hooks.onWave(`第 ${e.wave}/${e.total} 波来袭`);
+        // 必须在这里补建：新波的敌人在这一刻才被 push 进 sim.units（见 _buildPendingUnits）
+        this._buildPendingUnits();
       } else if (e.type === "wave_clear") {
         if (hooks.onWave) hooks.onWave(`第 ${e.wave}/${e.total} 波已肃清`);
       } else if (e.type === "passive") {
